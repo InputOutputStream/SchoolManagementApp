@@ -1,4 +1,3 @@
-
 # app/models/student.py
 from app import db
 from datetime import datetime, date

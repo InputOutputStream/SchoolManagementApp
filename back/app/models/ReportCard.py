@@ -9,7 +9,7 @@ class ReportCard(db.Model):
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
     evaluation_period_id = db.Column(db.Integer, db.ForeignKey('evaluation_periods.id'), nullable=False)
     generated_by = db.Column(db.Integer, db.ForeignKey('teachers.id'), nullable=False)
-    generation_date = db.Column(db.DateTime, default=datetime.utcnow)
+    generation_date = db.Column(db.DateTime, default=datetime.now(datetime.timezone.utc))
     overall_average = db.Column(db.Numeric(4, 2))
     class_rank = db.Column(db.Integer)
     total_students = db.Column(db.Integer)

@@ -1,4 +1,3 @@
-
 # app/models/audit_log.py
 from app import db
 from datetime import datetime
