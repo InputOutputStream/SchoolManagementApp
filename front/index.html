@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DPM School Dashboard</title>
+  <link rel="stylesheet" type="text/css" href="./styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="./script.js"></script>
+
+</head>
+<body>
+  <div class="dashboard">
+    <div class="header">
+      <div class="logo">DPM School</div>
+      <input type="text" class="search" placeholder="Search Student ID">
+      <img src="https://via.placeholder.com/40" alt="Profile" class="profile">
+    </div>
+    <div style="display: flex; gap: 20px;">
+      <div class="sidebar">
+        <a href="#" class="active">Dashboard</a>
+        <a href="#">Take Attendance</a>
+        <a href="#">Students List</a>
+        <a href="#">Reports</a>
+        <a href="#">Setting</a>
+        <a href="#">Logout</a>
+      </div>
+      <div class="main-content">
+        <div class="stats">
+          <div>Total Students <span>550</span></div>
+          <div>Total Teachers <span>20</span></div>
+          <div>03:10 AM</div>
+        </div>
+        <div class="attendance">
+          <h3>Attendance Overview</h3>
+          <p>Last 6 months <span id="attendance-value">370.5</span></p>
+          <canvas id="attendanceChart"></canvas>
+        </div>
+        <div class="calendar">
+          <h3>Calendar</h3>
+          <p>September 2021</p>
+          <div id="calendar"></div>
+        </div>
+        <div class="notice">
+          <h3>Notice</h3>
+          <div class="notice-item">Up coming Examination 25 Sep 2021</div>
+          <div class="notice-item">Off day 30 Sep 2021</div>
+          <div class="notice-item">Basketball Match 25 Sep 2021</div>
+        </div>
+      </div>
+    </div>
+    <div class="gallery">
+      <img src="https://via.placeholder.com/120" alt="Gallery 1">
+      <img src="https://via.placeholder.com/120" alt="Gallery 2">
+      <img src="https://via.placeholder.com/120" alt="Gallery 3">
+    </div>
+  </div>
+
+ 
+</body>
+</html>

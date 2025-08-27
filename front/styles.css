@@ -1,0 +1,55 @@
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #e0e7ff;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+    .dashboard {
+      background: #1e293b;
+      color: #fff;
+      width: 90%;
+      max-width: 1200px;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #334155;
+      margin-bottom: 20px;
+    }
+    .logo { font-size: 24px; font-weight: bold; }
+    .search {
+      background: #475569;
+      padding: 8px 15px;
+      border-radius: 8px;
+      border: none;
+      color: #fff;
+    }
+    .profile { width: 40px; height: 40px; border-radius: 50%; }
+    .sidebar a {
+      display: block;
+      color: #94a3b8;
+      padding: 10px 15px;
+      text-decoration: none;
+      border-radius: 5px;
+      margin-bottom: 5px;
+    }
+    .sidebar a.active { background: #3b82f6; color: #fff; }
+    .sidebar a:hover { background: #334155; }
+    .main-content { display: flex; gap: 20px; }
+    .stats { text-align: center; padding: 20px; background: #2d3748; border-radius: 10px; }
+    .stats div { margin: 10px 0; }
+    .attendance { flex-grow: 1; }
+    .attendance h3 { margin: 0 0 10px; font-size: 18px; }
+    .calendar, .notice { width: 250px; }
+    .calendar h3, .notice h3 { margin: 0 0 10px; font-size: 18px; }
+    .gallery { display: flex; gap: 10px; margin-top: 20px; }
+    .gallery img { width: 120px; height: 120px; border-radius: 10px; object-fit: cover; }
+    .notice-item { background: #2d3748; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
+ 
