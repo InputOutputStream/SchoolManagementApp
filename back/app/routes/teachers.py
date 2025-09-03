@@ -2,7 +2,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from app.models.User import User, UserRole
-from back.app.models.Teacher import Teacher
+from app.models.Teacher import Teacher
 from app.models.Classroom import Classroom
 from app.models.TeacherAssignment import TeacherAssignment
 from app.models.Student import Student

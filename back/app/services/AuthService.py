@@ -1,7 +1,7 @@
 # app/services/auth_service.py
 from app.models.User import User, UserRole
 from app.models.Student import Student
-from back.app.models.Teacher import Teacher
+from app.models.Teacher import Teacher
 from app import db
 import secrets
 import string

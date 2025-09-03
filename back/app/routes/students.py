@@ -4,7 +4,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from app.models.User import User, UserRole
 from app.models.Student import Student
-from back.app.models.Teacher import Teacher
+from app.models.Teacher import Teacher
 from app.services.AuthService import AuthService
 from app.utils.decorators import role_required, log_action
 from app import db

@@ -5,7 +5,7 @@ from app.models.ReportCard import ReportCard
 from app.models.Student import Student
 from app.models.Grade import Grade
 from app.models.Classroom import Classroom
-from back.app.services.ReportService import ReportService
+from app.services.ReportService import ReportService
 from app.utils.decorators import role_required, log_action
 from app import db
 
