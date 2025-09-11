@@ -4,6 +4,7 @@ export class UIUtils {
         this.searchTimeout = null;
         this.setupKeyboardShortcuts();
         this.setupModalHandlers();
+        this.setupNavigation();
     }
 
     // Section Navigation
@@ -47,7 +48,7 @@ export class UIUtils {
 
     updateSidebarActiveState(sectionName) {
         // Reset all links
-        document.querySelectorAll('.sidebar a').forEach(link => {
+        document.querySelectorAll('.sidebar a.nav-link').forEach(link => {
             link.classList.remove('active');
             link.setAttribute('aria-current', 'false');
         });
@@ -62,7 +63,6 @@ export class UIUtils {
             console.warn(`Sidebar link not found for section: ${sectionName}`);
         }
     }
-
     loadSectionData(sectionName) {
         const dashboardManager = window.dashboardManager;
         if (!dashboardManager) return;
@@ -254,6 +254,32 @@ export class UIUtils {
             }
         });
     }
+
+    setupNavigation() {
+        const sidebar = document.querySelector('.sidebar');
+        if (!sidebar) {
+            console.warn('Sidebar not found');
+            return;
+        }
+
+        // Add click event listener to the sidebar for delegation
+        sidebar.addEventListener('click', (e) => {
+            // Find the closest nav link that was clicked
+            const navLink = e.target.closest('.nav-link');
+            if (!navLink) return;
+
+            e.preventDefault();
+            
+            // Get the section from data attribute
+            const sectionName = navLink.getAttribute('data-section');
+            if (sectionName) {
+                this.showSection(sectionName);
+            }
+        });
+
+        console.log('Navigation setup completed');
+    }
+
 
     showModal(content, title = '') {
         const modal = document.createElement('div');

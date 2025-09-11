@@ -103,6 +103,7 @@ class SchoolManagementApp {
         // FIXED: Add null checks with consistent pattern
         this.uiUtils?.initializeSearch();
         this.uiUtils?.addInteractiveFeatures();
+        this.uiUtils?.setupNavigation();
 
         // Set current date for attendance
         const today = new Date().toISOString().split('T')[0];
