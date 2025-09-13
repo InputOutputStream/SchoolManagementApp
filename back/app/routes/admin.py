@@ -39,6 +39,7 @@ def create_teacher(current_user):
 @role_required('admin')
 def get_teachers(current_user):
     teachers = db.session.query(Teacher).join(User).filter(User.is_active == True).all()
+    print(teachers)
     return jsonify([teacher.to_dict() for teacher in teachers])
 
 @admin_bp.route('/teachers/<int:teacher_id>/assign-head', methods=['POST'])
@@ -87,6 +88,7 @@ def create_classroom(current_user):
     db.session.add(classroom)
     db.session.commit()
     
+    print(classroom)
     return jsonify({
         'message': 'Classroom created successfully',
         'classroom': classroom.to_dict()
@@ -135,6 +137,7 @@ def create_subject(current_user):
         code=data['code'],
         coefficient=data.get('coefficient', 1)
     )
+    print(subject)
     
     db.session.add(subject)
     db.session.commit()
@@ -149,6 +152,7 @@ def create_subject(current_user):
 @role_required('admin')
 def get_subjects(current_user):
     subjects = Subject.query.all()
+    print(subjects)
     return jsonify([subject.to_dict() for subject in subjects])
 
 @admin_bp.route('/assignments', methods=['POST'])
@@ -166,6 +170,7 @@ def create_assignment(current_user):
         assigned_by=current_user.id
     )
     
+    print(assignment)
     try:
         db.session.add(assignment)
         db.session.commit()
@@ -182,6 +187,7 @@ def create_assignment(current_user):
 @role_required('admin')
 def get_assignments(current_user):
     assignments = TeacherAssignment.query.filter_by(is_active=True).all()
+    print(assignments)
     return jsonify([assignment.to_dict() for assignment in assignments])
 
 @admin_bp.route('/assignments/<int:assignment_id>', methods=['DELETE'])
@@ -226,5 +232,6 @@ def get_dashboard_stats(current_user):
         'active_assignments': TeacherAssignment.query.filter_by(is_active=True).count()
     }
     
+    print(stats)
     return jsonify(stats)
 

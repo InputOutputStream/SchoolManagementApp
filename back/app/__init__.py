@@ -31,7 +31,7 @@ def create_app():
     db.init_app(app)
     jwt.init_app(app)
     migrate.init_app(app, db)
-    CORS(app)
+    CORS(app, origins=["http://localhost:3000"])  # Allow your frontend origin
     
     # Register blueprints
     from app.routes.auth import auth_bp
@@ -40,6 +40,7 @@ def create_app():
     from app.routes.students import students_bp
     from app.routes.grades import grades_bp
     from app.routes.reports import reports_bp
+    from app.routes.attendance import attendance_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
@@ -47,5 +48,6 @@ def create_app():
     app.register_blueprint(students_bp, url_prefix='/api/students')
     app.register_blueprint(grades_bp, url_prefix='/api/grades')
     app.register_blueprint(reports_bp, url_prefix='/api/reports')
+    app.register_blueprint(attendance_bp, url_prefix='/api/attendance')
     
     return app

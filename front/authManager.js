@@ -139,10 +139,16 @@ export class AuthManager {
         this.setLoading(true);
         
         try {
-            const response = await this.apiClient.call('POST', API_CONFIG.endpoints.auth.login, {
-                email: email,
-                password: password
-            }, false);
+            // Now properly using the structured endpoint config
+            const response = await this.apiClient.call(
+                'POST', 
+                API_CONFIG.endpoints.auth.login, // This will extract the path from the config object
+                {
+                    email: email,
+                    password: password
+                }, 
+                false // Override requiresAuth since login endpoint has requiresAuth: false
+            );
             
             if (response.access_token && response.user) {
                 this.token = response.access_token;
@@ -163,7 +169,6 @@ export class AuthManager {
             this.setLoading(false);
         }
     }
-
     async handleCreateTeacher() {
         if (!this.currentUser || this.currentUser.role !== 'admin') {
             this.showMessage('Access denied. Admin privileges required.', 'error');
@@ -179,7 +184,6 @@ export class AuthManager {
         const formData = new FormData(teacherForm);
         const teacherData = Object.fromEntries(formData.entries());
 
-        // Validate required fields
         const requiredFields = ['first_name', 'last_name', 'email', 'employee_number'];
         const missingFields = requiredFields.filter(field => !teacherData[field]);
         
@@ -189,13 +193,17 @@ export class AuthManager {
         }
 
         try {
-            const response = await this.apiClient.call('POST', API_CONFIG.endpoints.admin.teachers, teacherData);
+            // Using structured endpoint config - API client will handle role validation
+            const response = await this.apiClient.call(
+                'POST', 
+                API_CONFIG.endpoints.admin.teachers.create, 
+                teacherData
+            );
             
             if (response && (response.message || response.id)) {
                 this.showMessage('Teacher created successfully!', 'success');
                 teacherForm.reset();
                 
-                // Dispatch event for dashboard to refresh teacher list
                 window.dispatchEvent(new CustomEvent('teacherCreated', { detail: response }));
             } else {
                 this.showMessage('Teacher creation failed - invalid response', 'error');
@@ -205,7 +213,7 @@ export class AuthManager {
             this.showMessage(error.message || 'Failed to create teacher.', 'error');
         }
     }
-
+    
     async handleCreateClassroom() {
         if (!this.currentUser || this.currentUser.role !== 'admin') {
             this.showMessage('Access denied. Admin privileges required.', 'error');

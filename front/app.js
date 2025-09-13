@@ -7,6 +7,7 @@ import { FileImportManager } from './fileImportManager.js';
 import { UIUtils } from './uiUtils.js';
 import { API_CONFIG } from './config.js';
 
+//***********************************************************************************************************
 
 // Global Application State
 class SchoolManagementApp {
@@ -402,7 +403,6 @@ async function viewStudentDetails(studentId) {
     }
 }
 
-// FIXED: Add deduplication and comprehensive error handling
 const loadClassroomForAttendance = createDedupedAsyncFunction('loadAttendance', async function() {
     const classroomSelect = document.getElementById('attendanceClassroom');
     const dateInput = document.getElementById('attendanceDate');
@@ -423,13 +423,13 @@ const loadClassroomForAttendance = createDedupedAsyncFunction('loadAttendance', 
     try {
         window.uiUtils?.showLoading('attendanceStudentsList', true);
         
-        // Load existing attendance or create new attendance sheet
+        // Load existing attendance using the structured config
         let attendanceData = [];
         if (window.attendanceManager) {
             attendanceData = await window.attendanceManager.loadClassroomAttendance(classroomId, date);
         }
         
-        // Load students for the classroom
+        // Load students for the classroom using the structured config
         const students = await window.dashboardManager?.loadStudents(classroomId);
         
         // Display attendance list

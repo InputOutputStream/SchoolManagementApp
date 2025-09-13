@@ -6,14 +6,17 @@ export class GradesReportsManager {
     }
 
     // Grades Management
-    async addGrade(gradeData) {
+ async addGrade(gradeData) {
         const errors = this.validateGradeData(gradeData);
         if (errors.length > 0) {
             throw new Error(`Validation errors: ${errors.join(', ')}`);
         }
 
         try {
-            const result = await this.authManager.apiClient.post(API_CONFIG.endpoints.grades.add, gradeData);
+            const result = await this.authManager.apiClient.post(
+                API_CONFIG.endpoints.grades.add, 
+                gradeData
+            );
             this.authManager.showMessage('Grade added successfully!', 'success');
             return result;
         } catch (error) {
@@ -34,13 +37,48 @@ export class GradesReportsManager {
         }
 
         try {
-            const result = await this.authManager.apiClient.put(`${API_CONFIG.endpoints.grades.update}/${gradeId}`, gradeData);
+            const endpointConfig = resolveEndpoint(
+                API_CONFIG.endpoints.grades.update, 
+                gradeId
+            );
+            
+            const result = await this.authManager.apiClient.put(endpointConfig, gradeData);
             this.authManager.showMessage('Grade updated successfully!', 'success');
             return result;
         } catch (error) {
             console.error('Error updating grade:', error);
             this.authManager.showMessage('Failed to update grade: ' + error.message, 'error');
             throw error;
+        }
+    }
+
+    async loadClassroomGrades(classroomId, periodId) {
+        if (!classroomId) {
+            throw new Error('Classroom ID is required');
+        }
+
+        try {
+            if (periodId) {
+                const endpointConfig = resolveEndpoint(
+                    API_CONFIG.endpoints.grades.classroomGrades, 
+                    classroomId, 
+                    periodId
+                );
+                const grades = await this.authManager.apiClient.get(endpointConfig);
+                return Array.isArray(grades) ? grades : [];
+            } else {
+                // Fallback for when no period is specified
+                const endpointConfig = {
+                    path: `/grades/classroom/${classroomId}`,
+                    method: 'GET',
+                    requiredRole: 'teacher'
+                };
+                const grades = await this.authManager.apiClient.get(endpointConfig);
+                return Array.isArray(grades) ? grades : [];
+            }
+        } catch (error) {
+            console.error('Error loading classroom grades:', error);
+            return [];
         }
     }
 
@@ -57,24 +95,6 @@ export class GradesReportsManager {
             console.error('Error deleting grade:', error);
             this.authManager.showMessage('Failed to delete grade: ' + error.message, 'error');
             throw error;
-        }
-    }
-
-    async loadClassroomGrades(classroomId, periodId) {
-        if (!classroomId) {
-            throw new Error('Classroom ID is required');
-        }
-
-        try {
-            let endpoint = `${API_CONFIG.endpoints.grades.classroom}/${classroomId}`;
-            if (periodId) {
-                endpoint += `?period_id=${periodId}`;
-            }
-            const grades = await this.authManager.apiClient.get(endpoint);
-            return Array.isArray(grades) ? grades : [];
-        } catch (error) {
-            console.error('Error loading classroom grades:', error);
-            return [];
         }
     }
 

@@ -83,14 +83,13 @@ export class DashboardManager {
         this.setLoadingState('adminStats', true);
         
         try {
-            // Validate API client
             if (!this.authManager?.apiClient) {
                 throw new Error('API client not available');
             }
 
-            const stats = await this.authManager.apiClient.get(API_CONFIG.endpoints.admin.stats);
+            // Using structured endpoint config // error
+            const stats = await this.authManager.apiClient.get(API_CONFIG.endpoints.admin.dashboard.stats);
             
-            // Validate API response
             if (!stats || typeof stats !== 'object') {
                 throw new Error('Invalid stats response from API');
             }
@@ -98,18 +97,15 @@ export class DashboardManager {
             this.updateStatElement('totalStudents', stats.total_students || 0);
             this.updateStatElement('totalTeachers', stats.total_teachers || 0);
             
-            // Use actual attendance data from API if available
             const presentToday = stats.present_today || 0;
             this.updateStatElement('presentToday', presentToday);
             
-            // Calculate attendance rate
             const attendanceRate = stats.total_students > 0 ? 
                 Math.round((presentToday / stats.total_students) * 100) : 0;
             this.updateStatElement('attendanceRate', `${attendanceRate}%`);
 
         } catch (error) {
             console.error('Error loading admin stats:', error);
-            // Set neutral values if API call fails
             this.updateStatElement('totalStudents', 'N/A');
             this.updateStatElement('totalTeachers', 'N/A');
             this.updateStatElement('presentToday', 'N/A');
@@ -123,18 +119,14 @@ export class DashboardManager {
         this.setLoadingState('teacherData', true);
         
         try {
-            // Validate API client
             if (!this.authManager?.apiClient) {
                 throw new Error('API client not available');
             }
 
-            // Load teacher assignments
+            // Using structured endpoint config
             const assignments = await this.authManager.apiClient.get(API_CONFIG.endpoints.teachers.myAssignments);
-            
-            // Load teacher classrooms
             const classrooms = await this.authManager.apiClient.get(API_CONFIG.endpoints.teachers.myClassrooms);
             
-            // Update UI with teacher-specific data
             this.updateTeacherStats(assignments, classrooms);
 
         } catch (error) {
@@ -142,6 +134,30 @@ export class DashboardManager {
             this.showMessage('Failed to load teacher data', 'error');
         } finally {
             this.setLoadingState('teacherData', false);
+        }
+    }
+
+    async loadTeachersList() {
+        if (!this.authManager?.currentUser || this.authManager.currentUser.role !== 'admin') {
+            console.warn('Access denied: Admin privileges required');
+            return;
+        }
+
+        this.setLoadingState('teachersList', true);
+
+        try {
+            if (!this.authManager.apiClient) {
+                throw new Error('API client not available');
+            }
+
+            // Using structured endpoint config
+            const teachers = await this.authManager.apiClient.get(API_CONFIG.endpoints.admin.teachers.list);
+            this.displayTeachersList(teachers);
+        } catch (error) {
+            console.error('Error loading teachers list:', error);
+            this.showMessage('Failed to load teachers list', 'error');
+        } finally {
+            this.setLoadingState('teachersList', false);
         }
     }
 
@@ -192,7 +208,7 @@ export class DashboardManager {
                 throw new Error('API client not available');
             }
 
-            const teachers = await this.authManager.apiClient.get(API_CONFIG.endpoints.admin.teachers);
+            const teachers = await this.authManager.apiClient.get(API_CONFIG.endpoints.admin.teachers.list);
             this.displayTeachersList(teachers);
         } catch (error) {
             console.error('Error loading teachers list:', error);
@@ -265,14 +281,18 @@ export class DashboardManager {
         this.setLoadingState('students', true);
         
         try {
-            // Validate API client
             if (!this.authManager?.apiClient) {
                 throw new Error('API client not available');
             }
 
             let endpoint = API_CONFIG.endpoints.students.list;
             if (classroomId && classroomId !== 'all') {
-                endpoint += `?classroom_id=${classroomId}`;
+                // Create a dynamic endpoint for classroom-specific students
+                endpoint = {
+                    path: `/students?classroom_id=${classroomId}`,
+                    method: 'GET',
+                    requiredRole: 'teacher'
+                };
             }
             
             const students = await this.authManager.apiClient.get(endpoint);
@@ -282,8 +302,6 @@ export class DashboardManager {
         } catch (error) {
             console.error('Error loading students:', error);
             this.showMessage('Failed to load students', 'error');
-            
-            // Return empty array instead of placeholder data
             this.displayStudentsList([]);
             return [];
             
@@ -344,21 +362,20 @@ export class DashboardManager {
 
     async loadClassrooms() {
         try {
-            // Validate API client
             if (!this.authManager?.apiClient) {
                 throw new Error('API client not available');
             }
 
-            const classrooms = await this.authManager.apiClient.get(API_CONFIG.endpoints.admin.classrooms);
+            const classrooms = await this.authManager.apiClient.get(API_CONFIG.endpoints.admin.classrooms.list);
             this.populateClassroomSelects(classrooms);
             return Array.isArray(classrooms) ? classrooms : [];
         } catch (error) {
             console.error('Error loading classrooms:', error);
-            // Return empty array instead of fallback data
             this.populateClassroomSelects([]);
             return [];
         }
     }
+
 
     populateClassroomSelects(classrooms) {
         const selects = [
@@ -397,7 +414,7 @@ export class DashboardManager {
                 throw new Error('API client not available');
             }
 
-            const subjects = await this.authManager.apiClient.get(API_CONFIG.endpoints.admin.subjects);
+            const subjects = await this.authManager.apiClient.get(API_CONFIG.endpoints.admin.subjects.list);
             return Array.isArray(subjects) ? subjects : [];
         } catch (error) {
             console.error('Error loading subjects:', error);

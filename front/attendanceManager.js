@@ -13,7 +13,10 @@ export class AttendanceManager {
         }
 
         try {
-            const result = await this.authManager.apiClient.post(API_CONFIG.endpoints.attendance.record, attendanceData);
+                const result = await this.authManager.apiClient.post(
+                API_CONFIG.endpoints.attendance.record, 
+                attendanceData
+            );
             this.authManager.showMessage('Attendance recorded successfully!', 'success');
             return result;
         } catch (error) {
@@ -29,14 +32,49 @@ export class AttendanceManager {
         }
 
         try {
-            const endpoint = `${API_CONFIG.endpoints.attendance.classroom}/${classroomId}?date=${date}`;
-            const attendance = await this.authManager.apiClient.get(endpoint);
+            // Use the function-based endpoint config
+            const endpointConfig = resolveEndpoint(
+                API_CONFIG.endpoints.attendance.classroomAttendance, 
+                classroomId
+            );
+            
+            // Add date as query parameter
+            const endpointWithQuery = {
+                ...endpointConfig,
+                path: `${endpointConfig.path}?date=${date}`
+            };
+            
+            const attendance = await this.authManager.apiClient.get(endpointWithQuery);
             return Array.isArray(attendance) ? attendance : [];
         } catch (error) {
             console.error('Error loading classroom attendance:', error);
             return [];
         }
     }
+
+    /**
+     * async loadClassroomAttendance(classroomId, date) {
+    if (!classroomId || !date) {
+        throw new Error('Classroom ID and date are required');
+    }
+
+    try {
+        // Create dynamic endpoint for classroom attendance with date query
+        const endpoint = {
+            path: `/attendance/classroom/${classroomId}?date=${date}`,
+            method: 'GET',
+            requiredRole: 'teacher'
+        };
+        
+        const attendance = await this.authManager.apiClient.get(endpoint);
+        return Array.isArray(attendance) ? attendance : [];
+    } catch (error) {
+        console.error('Error loading classroom attendance:', error);
+        return [];
+    }
+}
+     * */
+
 
     async updateAttendance(attendanceId, attendanceData) {
         if (!attendanceId) {

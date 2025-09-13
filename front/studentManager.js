@@ -6,6 +6,17 @@ export class StudentManager {
         this.authManager = authManager;
     }
 
+    async getStudents() {
+        try {
+            const students = await this.authManager.apiClient.get(API_CONFIG.endpoints.students.list);
+            return students;
+        } catch (error) {
+            console.error('Error fetching students:', error);
+            this.authManager.showMessage('Failed to fetch students: ' + error.message, 'error');
+            throw error;
+        }
+    }
+
     async registerStudent(studentData) {
         // Validate required fields
         const requiredFields = ['first_name', 'last_name', 'email', 'student_number'];
@@ -32,7 +43,8 @@ export class StudentManager {
         }
 
         try {
-            const result = await this.authManager.apiClient.put(`${API_CONFIG.endpoints.students.update}/${studentId}`, studentData);
+            const url = `${API_CONFIG.endpoints.students.update}/${studentId}`;
+            const result = await this.authManager.apiClient.put(url, studentData);
             this.authManager.showMessage('Student updated successfully!', 'success');
             return result;
         } catch (error) {
@@ -48,7 +60,8 @@ export class StudentManager {
         }
 
         try {
-            const student = await this.authManager.apiClient.get(`${API_CONFIG.endpoints.students.update}/${studentId}`);
+            const url = `${API_CONFIG.endpoints.students.update}/${studentId}`;
+            const student = await this.authManager.apiClient.get(url);
             return student;
         } catch (error) {
             console.error('Error fetching student:', error);
@@ -62,7 +75,8 @@ export class StudentManager {
         }
 
         try {
-            const result = await this.authManager.apiClient.delete(`${API_CONFIG.endpoints.students.update}/${studentId}`);
+            const url = `${API_CONFIG.endpoints.students.update}/${studentId}`;
+            const result = await this.authManager.apiClient.delete(url);
             this.authManager.showMessage('Student deleted successfully!', 'success');
             return result;
         } catch (error) {
