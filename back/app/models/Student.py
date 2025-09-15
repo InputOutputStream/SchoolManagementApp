@@ -1,4 +1,4 @@
-# app/models/student.py
+# app/models/Student.py
 from app import db
 from datetime import datetime, date
 
@@ -18,13 +18,13 @@ class Student(db.Model):
     enrollment_date = db.Column(db.Date, default=date.today)
     is_enrolled = db.Column(db.Boolean, default=True)
     
-    # Relationships - REMOVED the conflicting backref
-    # The backref will be created from the Grade model instead
-    # grades relationship will be available via backref from Grade model
-    report_cards = db.relationship('ReportCard', backref='student', lazy=True)
+    # Fixed relationships using back_populates
+    user = db.relationship('User', foreign_keys=[user_id], back_populates='student_profile')
+    classroom = db.relationship('Classroom', backref='students')
+    grades = db.relationship('Grade', back_populates='student', lazy=True)
     
-    def to_dict(self):
-        return {
+    def to_dict(self, include_relationships=True):
+        result = {
             'id': self.id,
             'user_id': self.user_id,
             'student_number': self.student_number,
@@ -37,6 +37,14 @@ class Student(db.Model):
             'parent_phone': self.parent_phone,
             'enrollment_date': self.enrollment_date.isoformat(),
             'is_enrolled': self.is_enrolled,
-            'user': self.user.to_dict() if self.user else None,
-            'classroom': self.classroom.to_dict() if self.classroom else None
+            'user': self.user.to_dict() if self.user else None
         }
+        
+        if include_relationships and self.classroom:
+            result['classroom'] = {
+                'id': self.classroom.id,
+                'name': self.classroom.name,
+                'level': self.classroom.level
+            }
+        
+        return result

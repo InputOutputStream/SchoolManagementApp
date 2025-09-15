@@ -15,12 +15,11 @@ class Classroom(db.Model):
     assigned_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     
     # Relationships
-    students = db.relationship('Student', backref='classroom', lazy=True)
     assignments = db.relationship('TeacherAssignment', backref='classroom', lazy=True)
     assigner = db.relationship('User', foreign_keys=[assigned_by], backref='assigned_classrooms')
     
-    def to_dict(self):
-        return {
+    def to_dict(self, include_relationships=True):
+        result = {
             'id': self.id,
             'name': self.name,
             'level': self.level,
@@ -29,6 +28,14 @@ class Classroom(db.Model):
             'max_students': self.max_students,
             'created_at': self.created_at.isoformat(),
             'assigned_by': self.assigned_by,
-            'students_count': len(self.students),
-            'head_teacher': self.head_teacher.to_dict() if self.head_teacher else None
+            'students_count': len(self.students)
         }
+        
+        if include_relationships and self.head_teacher:
+            result['head_teacher'] = {
+                'id': self.head_teacher.id,
+                'employee_number': self.head_teacher.employee_number,
+                'name': f"{self.head_teacher.user.first_name} {self.head_teacher.user.last_name}" if self.head_teacher.user else None
+            }
+        
+        return result

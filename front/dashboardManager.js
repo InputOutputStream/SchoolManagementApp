@@ -1,12 +1,13 @@
-import { API_CONFIG } from './config.js';
+import { API_CONFIG, resolveEndpoint, hasPermission, getUserContext, ROLES } from './config.js';
 
-// Enhanced Dashboard Manager with Full API Integration
+// Enhanced Dashboard Manager with Full API Integration and Role-Based Access
 export class DashboardManager {
     constructor() {
         this.authManager = null;
         this.loadingStates = new Set();
         this.attendanceChartInstance = null;
         this.eventListeners = new Map();
+        this.userContext = null;
         this.setupEventListeners();
     }
 
@@ -20,10 +21,13 @@ export class DashboardManager {
 
         this.eventListeners.set('userLoggedOut', () => {
             this.destroyCharts();
+            this.userContext = null;
         });
 
         this.eventListeners.set('teacherCreated', () => {
-            this.loadTeachersList();
+            if (this.canAccessTeachers()) {
+                this.loadTeachersList();
+            }
         });
 
         this.eventListeners.set('classroomCreated', () => {
@@ -31,7 +35,9 @@ export class DashboardManager {
         });
 
         this.eventListeners.set('subjectCreated', () => {
-            this.loadSubjects();
+            if (this.canAccessSubjects()) {
+                this.loadSubjects();
+            }
         });
 
         // Add event listeners
@@ -42,40 +48,96 @@ export class DashboardManager {
 
     setAuthManager(authManager) {
         this.authManager = authManager;
+        this.updateUserContext();
     }
 
-    // Cleanup method to remove event listeners
-    destroy() {
-        this.eventListeners.forEach((handler, event) => {
-            window.removeEventListener(event, handler);
-        });
-        this.eventListeners.clear();
-        this.destroyCharts();
+    updateUserContext() {
+        if (this.authManager?.currentUser) {
+            this.userContext = getUserContext(this.authManager.currentUser);
+            console.log('User context updated:', this.userContext);
+        }
+    }
+
+    // Role-based access control helpers
+    canAccessTeachers() {
+        return this.userContext?.role === ROLES.ADMIN;
+    }
+
+    canAccessSubjects() {
+        return [ROLES.ADMIN, ROLES.TEACHER].includes(this.userContext?.role);
+    }
+
+    canAccessAllStudents() {
+        return this.userContext?.role === ROLES.ADMIN;
+    }
+
+    canAccessClassroom(classroomId) {
+        if (this.userContext?.canAccessAll) return true;
+        
+        const assignedClassrooms = this.userContext?.assignedClassrooms || [];
+        const headOfClassrooms = this.userContext?.headOfClassrooms || [];
+        
+        return assignedClassrooms.includes(classroomId) || headOfClassrooms.includes(classroomId);
     }
 
     async loadDashboardData() {
-        if (!this.authManager || !this.authManager.currentUser) {
+        if (!this.authManager?.currentUser) {
             console.warn('No authenticated user found');
             return;
         }
 
+        this.updateUserContext();
+
         try {
-            // Load dashboard statistics for admin
-            if (this.authManager.currentUser.role === 'admin') {
-                await this.loadAdminStats();
-            }
-            
-            // Load teacher-specific data
-            if (this.authManager.currentUser.role === 'teacher') {
-                await this.loadTeacherData();
+            // Load role-specific dashboard data
+            if (this.userContext.role === ROLES.ADMIN) {
+                await this.loadAdminDashboard();
+            } else if (this.userContext.role === ROLES.TEACHER) {
+                await this.loadTeacherDashboard();
             }
 
-            // Load common data
+            // Load common data that both roles can access
             await this.loadClassrooms();
             
         } catch (error) {
             console.error('Error loading dashboard data:', error);
-            this.showMessage('Failed to load dashboard data', 'error');
+            this.showMessage('Failed to load dashboard data: ' + error.message, 'error');
+        }
+    }
+
+    async loadAdminDashboard() {
+        this.setLoadingState('adminDashboard', true);
+        
+        try {
+            // Load admin statistics
+            await this.loadAdminStats();
+            
+            // Load teachers list for admin
+            await this.loadTeachersList();
+            
+        } catch (error) {
+            console.error('Error loading admin dashboard:', error);
+            this.showMessage('Failed to load admin dashboard data', 'error');
+        } finally {
+            this.setLoadingState('adminDashboard', false);
+        }
+    }
+
+    async loadTeacherDashboard() {
+        this.setLoadingState('teacherDashboard', true);
+        
+        try {
+            // Load teacher-specific data
+            await this.loadTeacherData();
+            
+            // Load teacher's assigned students
+            await this.loadTeacherStudents();
+            
+        } catch (error) {
+            console.error('Error loading teacher dashboard:', error);
+            this.showMessage('Failed to load teacher dashboard data', 'error');
+        } finally {
+            this.setLoadingState('teacherDashboard', false);
         }
     }
 
@@ -87,10 +149,11 @@ export class DashboardManager {
                 throw new Error('API client not available');
             }
 
-            // Using structured endpoint config // error
-            const stats = await this.authManager.apiClient.get(API_CONFIG.endpoints.admin.dashboard.stats);
-            
+            const endpoint = API_CONFIG.endpoints.admin.dashboard.stats;
+            const stats = await this.authManager.apiClient.get(endpoint);
+           
             if (!stats || typeof stats !== 'object') {
+                console.warn('Invalid stats response, using default values');
                 throw new Error('Invalid stats response from API');
             }
             
@@ -103,6 +166,9 @@ export class DashboardManager {
             const attendanceRate = stats.total_students > 0 ? 
                 Math.round((presentToday / stats.total_students) * 100) : 0;
             this.updateStatElement('attendanceRate', `${attendanceRate}%`);
+
+            // Update admin-specific UI elements
+            this.showAdminElements();
 
         } catch (error) {
             console.error('Error loading admin stats:', error);
@@ -123,23 +189,37 @@ export class DashboardManager {
                 throw new Error('API client not available');
             }
 
-            // Using structured endpoint config
-            const assignments = await this.authManager.apiClient.get(API_CONFIG.endpoints.teachers.myAssignments);
-            const classrooms = await this.authManager.apiClient.get(API_CONFIG.endpoints.teachers.myClassrooms);
+            // Load teacher's assignments and classrooms
+            const [assignments, classrooms] = await Promise.all([
+                this.authManager.apiClient.get(API_CONFIG.endpoints.teachers.myAssignments),
+                this.authManager.apiClient.get(API_CONFIG.endpoints.teachers.myClassrooms)
+            ]);
             
             this.updateTeacherStats(assignments, classrooms);
+            this.showTeacherElements();
 
         } catch (error) {
             console.error('Error loading teacher data:', error);
-            this.showMessage('Failed to load teacher data', 'error');
+            this.showMessage('Failed to load teacher data: ' + error.message, 'error');
         } finally {
             this.setLoadingState('teacherData', false);
         }
     }
 
+    async loadTeacherStudents() {
+        if (this.userContext?.role !== ROLES.TEACHER) return;
+
+        try {
+            const students = await this.authManager.apiClient.get(API_CONFIG.endpoints.teachers.myStudents);
+            this.updateStatElement('myStudents', Array.isArray(students) ? students.length : 0);
+        } catch (error) {
+            console.error('Error loading teacher students:', error);
+        }
+    }
+
     async loadTeachersList() {
-        if (!this.authManager?.currentUser || this.authManager.currentUser.role !== 'admin') {
-            console.warn('Access denied: Admin privileges required');
+        if (!this.canAccessTeachers()) {
+            console.warn('Access denied: Admin privileges required for teachers list');
             return;
         }
 
@@ -150,12 +230,12 @@ export class DashboardManager {
                 throw new Error('API client not available');
             }
 
-            // Using structured endpoint config
-            const teachers = await this.authManager.apiClient.get(API_CONFIG.endpoints.admin.teachers.list);
+            const endpoint = API_CONFIG.endpoints.admin.teachers.list;
+            const teachers = await this.authManager.apiClient.get(endpoint);
             this.displayTeachersList(teachers);
         } catch (error) {
             console.error('Error loading teachers list:', error);
-            this.showMessage('Failed to load teachers list', 'error');
+            this.showMessage('Failed to load teachers list: ' + error.message, 'error');
         } finally {
             this.setLoadingState('teachersList', false);
         }
@@ -177,44 +257,63 @@ export class DashboardManager {
         console.log('Teacher stats updated:', { assignments: totalAssignments, classrooms: totalClassrooms });
     }
 
+    showAdminElements() {
+        // Show admin-only elements
+        const adminElements = [
+            'teachersLink',
+            'classroomsManagement',
+            'subjectsManagement',
+            'adminDashboardSection'
+        ];
+
+        adminElements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.classList.remove('hidden');
+                element.style.display = 'block';
+            }
+        });
+    }
+
+    showTeacherElements() {
+        // Show teacher-specific elements
+        const teacherElements = [
+            'teacherDashboardSection',
+            'myClassroomsSection',
+            'myStudentsSection'
+        ];
+
+        teacherElements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.classList.remove('hidden');
+                element.style.display = 'block';
+            }
+        });
+
+        // Hide admin-only elements for teachers
+        const adminOnlyElements = [
+            'teachersManagement',
+            'systemSettings'
+        ];
+
+        adminOnlyElements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.classList.add('hidden');
+                element.style.display = 'none';
+            }
+        });
+    }
+
     updateStatElement(elementId, value) {
         const element = document.getElementById(elementId);
         if (element) {
+            // Animate the change
+            element.style.transition = 'all 0.3s ease';
             element.textContent = value;
-        }
-    }
-
-    setLoadingState(key, isLoading) {
-        if (isLoading) {
-            this.loadingStates.add(key);
         } else {
-            this.loadingStates.delete(key);
-        }
-        
-        console.log('Loading states:', Array.from(this.loadingStates));
-    }
-
-    async loadTeachersList() {
-        if (!this.authManager?.currentUser || this.authManager.currentUser.role !== 'admin') {
-            console.warn('Access denied: Admin privileges required');
-            return;
-        }
-
-        this.setLoadingState('teachersList', true);
-
-        try {
-            // Validate API client
-            if (!this.authManager.apiClient) {
-                throw new Error('API client not available');
-            }
-
-            const teachers = await this.authManager.apiClient.get(API_CONFIG.endpoints.admin.teachers.list);
-            this.displayTeachersList(teachers);
-        } catch (error) {
-            console.error('Error loading teachers list:', error);
-            this.showMessage('Failed to load teachers list', 'error');
-        } finally {
-            this.setLoadingState('teachersList', false);
+            console.warn(`Element with ID '${elementId}' not found`);
         }
     }
 
@@ -235,7 +334,7 @@ export class DashboardManager {
         }
         
         if (!Array.isArray(teachers) || teachers.length === 0) {
-            teachersList.innerHTML = '<p>No teachers found.</p>';
+            teachersList.innerHTML = '<p class="no-data">No teachers found.</p>';
             return;
         }
         
@@ -248,6 +347,7 @@ export class DashboardManager {
                         <th>Employee ID</th>
                         <th>Specialization</th>
                         <th>Status</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -261,6 +361,7 @@ export class DashboardManager {
             const employeeNumber = this.sanitizeHTML(teacher.employee_number || 'N/A');
             const specialization = this.sanitizeHTML(teacher.specialization || 'N/A');
             const isHeadTeacher = teacher.is_head_teacher || false;
+            const isAdmin = teacher.user?.role === 'admin';
             
             html += `
                 <tr>
@@ -268,13 +369,70 @@ export class DashboardManager {
                     <td>${email}</td>
                     <td>${employeeNumber}</td>
                     <td>${specialization}</td>
-                    <td><span class="status-badge ${isHeadTeacher ? 'head-teacher' : 'teacher'}">${isHeadTeacher ? 'Head Teacher' : 'Teacher'}</span></td>
+                    <td>
+                        <span class="status-badge ${isAdmin ? 'admin' : isHeadTeacher ? 'head-teacher' : 'teacher'}">
+                            ${isAdmin ? 'Admin' : isHeadTeacher ? 'Head Teacher' : 'Teacher'}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-small btn-info" onclick="window.dashboardManager.viewTeacherDetails(${teacher.id})">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            ${!isAdmin ? `
+                                <button class="btn-small btn-warning" onclick="window.dashboardManager.promoteToAdmin(${teacher.id}, '${firstName} ${lastName}')">
+                                    <i class="fas fa-user-shield"></i> Make Admin
+                                </button>
+                            ` : ''}
+                            <button class="btn-small btn-secondary" onclick="window.dashboardManager.editTeacher(${teacher.id})">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                        </div>
+                    </td>
                 </tr>
             `;
         });
         
         html += '</tbody></table>';
         teachersList.innerHTML = html;
+    }
+
+    async promoteToAdmin(teacherId, teacherName) {
+        if (!this.canAccessTeachers()) {
+            this.showMessage('Access denied: Admin privileges required', 'error');
+            return;
+        }
+
+        const confirmed = confirm(`Are you sure you want to promote ${teacherName} to Admin? This will give them full system access.`);
+        if (!confirmed) return;
+
+        try {
+            const endpointFunction = API_CONFIG.endpoints.admin.teachers.promoteToAdmin;
+            const endpoint = resolveEndpoint(endpointFunction, teacherId);
+            
+            const result = await this.authManager.apiClient.patch(endpoint, {});
+            
+            this.showMessage(`${teacherName} has been promoted to Admin successfully!`, 'success');
+            
+            // Refresh the teachers list
+            await this.loadTeachersList();
+            
+        } catch (error) {
+            console.error('Error promoting teacher to admin:', error);
+            this.showMessage('Failed to promote teacher: ' + error.message, 'error');
+        }
+    }
+
+    async viewTeacherDetails(teacherId) {
+        // This would show detailed teacher information in a modal
+        this.showMessage(`Viewing details for teacher ID: ${teacherId}`, 'info');
+        // Implementation would fetch and display teacher details
+    }
+
+    async editTeacher(teacherId) {
+        // This would open an edit form for the teacher
+        this.showMessage(`Editing teacher ID: ${teacherId}`, 'info');
+        // Implementation would show edit form
     }
 
     async loadStudents(classroomId = null) {
@@ -285,23 +443,35 @@ export class DashboardManager {
                 throw new Error('API client not available');
             }
 
-            let endpoint = API_CONFIG.endpoints.students.list;
+            let endpoint;
+            let students = [];
+
             if (classroomId && classroomId !== 'all') {
-                // Create a dynamic endpoint for classroom-specific students
-                endpoint = {
-                    path: `/students?classroom_id=${classroomId}`,
-                    method: 'GET',
-                    requiredRole: 'teacher'
-                };
+                // Check if user can access this classroom
+                if (!this.userContext?.canAccessAll && !this.canAccessClassroom(parseInt(classroomId))) {
+                    throw new Error('Access denied: You can only view students from your assigned classrooms');
+                }
+
+                // Load students for specific classroom
+                const endpointFunction = API_CONFIG.endpoints.students.classroomStudents;
+                const endpointConfig = resolveEndpoint(endpointFunction, classroomId);
+                students = await this.authManager.apiClient.get(endpointConfig);
+            } else if (this.userContext?.canAccessAll) {
+                // Admin can view all students
+                endpoint = API_CONFIG.endpoints.students.list;
+                students = await this.authManager.apiClient.get(endpoint);
+            } else {
+                // Teacher can only view their students
+                endpoint = API_CONFIG.endpoints.teachers.myStudents;
+                students = await this.authManager.apiClient.get(endpoint);
             }
             
-            const students = await this.authManager.apiClient.get(endpoint);
             this.displayStudentsList(students);
             return Array.isArray(students) ? students : [];
             
         } catch (error) {
             console.error('Error loading students:', error);
-            this.showMessage('Failed to load students', 'error');
+            this.showMessage('Failed to load students: ' + error.message, 'error');
             this.displayStudentsList([]);
             return [];
             
@@ -318,7 +488,7 @@ export class DashboardManager {
         }
         
         if (!Array.isArray(students) || students.length === 0) {
-            studentsList.innerHTML = '<p>No students found.</p>';
+            studentsList.innerHTML = '<p class="no-data">No students found.</p>';
             return;
         }
         
@@ -348,9 +518,21 @@ export class DashboardManager {
                     <td>${firstName} ${lastName}</td>
                     <td>${classroomName}</td>
                     <td>
-                        <button class="btn-small" onclick="viewStudentDetails(${student.id})">
-                            <i class="fas fa-eye"></i> View
-                        </button>
+                        <div class="action-buttons">
+                            <button class="btn-small btn-info" onclick="viewStudentDetails(${student.id})">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            ${this.userContext?.canAccessAll || this.canAccessClassroom(student.classroom?.id) ? `
+                                <button class="btn-small btn-secondary" onclick="window.dashboardManager.editStudent(${student.id})">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                            ` : ''}
+                            ${this.userContext?.canAccessAll ? `
+                                <button class="btn-small btn-danger" onclick="window.dashboardManager.deleteStudent(${student.id}, '${firstName} ${lastName}')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            ` : ''}
+                        </div>
                     </td>
                 </tr>
             `;
@@ -360,22 +542,69 @@ export class DashboardManager {
         studentsList.innerHTML = html;
     }
 
+    async editStudent(studentId) {
+        // Implementation for editing student
+        this.showMessage(`Editing student ID: ${studentId}`, 'info');
+        // Would open edit form
+    }
+
+    async deleteStudent(studentId, studentName) {
+        if (!this.userContext?.canAccessAll) {
+            this.showMessage('Access denied: Admin privileges required', 'error');
+            return;
+        }
+
+        const confirmed = confirm(`Are you sure you want to delete student ${studentName}? This action cannot be undone.`);
+        if (!confirmed) return;
+
+        try {
+            const endpointFunction = API_CONFIG.endpoints.students.delete;
+            const endpoint = resolveEndpoint(endpointFunction, studentId);
+            
+            await this.authManager.apiClient.delete(endpoint);
+            this.showMessage(`Student ${studentName} has been deleted successfully!`, 'success');
+            
+            // Refresh the students list
+            await this.loadStudents();
+            
+        } catch (error) {
+            console.error('Error deleting student:', error);
+            this.showMessage('Failed to delete student: ' + error.message, 'error');
+        }
+    }
+
     async loadClassrooms() {
         try {
             if (!this.authManager?.apiClient) {
                 throw new Error('API client not available');
             }
 
-            const classrooms = await this.authManager.apiClient.get(API_CONFIG.endpoints.admin.classrooms.list);
-            this.populateClassroomSelects(classrooms);
-            return Array.isArray(classrooms) ? classrooms : [];
+            const endpoint = API_CONFIG.endpoints.admin.classrooms.list;
+            const classrooms = await this.authManager.apiClient.get(endpoint);
+            
+            // Filter classrooms based on user role
+            let filteredClassrooms = classrooms;
+            if (this.userContext?.role === ROLES.TEACHER && !this.userContext?.canAccessAll) {
+                // Teachers only see their assigned classrooms
+                const teacherClassroomIds = [
+                    ...(this.userContext.assignedClassrooms || []),
+                    ...(this.userContext.headOfClassrooms || [])
+                ];
+                
+                filteredClassrooms = classrooms.filter(classroom => 
+                    teacherClassroomIds.includes(classroom.id)
+                );
+            }
+            
+            this.populateClassroomSelects(filteredClassrooms);
+            return Array.isArray(filteredClassrooms) ? filteredClassrooms : [];
         } catch (error) {
             console.error('Error loading classrooms:', error);
+            this.showMessage('Failed to load classrooms: ' + error.message, 'error');
             this.populateClassroomSelects([]);
             return [];
         }
     }
-
 
     populateClassroomSelects(classrooms) {
         const selects = [
@@ -408,17 +637,67 @@ export class DashboardManager {
     }
 
     async loadSubjects() {
+        if (!this.canAccessSubjects()) {
+            console.warn('Access denied: Teacher or Admin privileges required');
+            return [];
+        }
+
         try {
-            // Validate API client
             if (!this.authManager?.apiClient) {
                 throw new Error('API client not available');
             }
 
-            const subjects = await this.authManager.apiClient.get(API_CONFIG.endpoints.admin.subjects.list);
+            const endpoint = API_CONFIG.endpoints.admin.subjects.list;
+            const subjects = await this.authManager.apiClient.get(endpoint);
             return Array.isArray(subjects) ? subjects : [];
         } catch (error) {
             console.error('Error loading subjects:', error);
+            this.showMessage('Failed to load subjects: ' + error.message, 'error');
             return [];
+        }
+    }
+
+    setLoadingState(key, isLoading) {
+        if (isLoading) {
+            this.loadingStates.add(key);
+        } else {
+            this.loadingStates.delete(key);
+        }
+        
+        // Update UI loading indicators
+        this.updateLoadingUI(key, isLoading);
+        
+        console.log('Loading states:', Array.from(this.loadingStates));
+    }
+
+    updateLoadingUI(key, isLoading) {
+        const loadingElements = {
+            'adminStats': 'adminStatsLoading',
+            'teacherData': 'teacherDataLoading',
+            'students': 'studentsLoading',
+            'teachersList': 'teachersListLoading'
+        };
+
+        const loadingElementId = loadingElements[key];
+        if (loadingElementId) {
+            const loadingElement = document.getElementById(loadingElementId);
+            if (loadingElement) {
+                loadingElement.style.display = isLoading ? 'block' : 'none';
+            }
+        }
+
+        // Generic loading for content areas
+        const contentElements = {
+            'students': 'studentsList',
+            'teachersList': 'teachersList'
+        };
+
+        const contentElementId = contentElements[key];
+        if (contentElementId) {
+            const contentElement = document.getElementById(contentElementId);
+            if (contentElement && isLoading) {
+                contentElement.innerHTML = '<div class="loading-spinner">Loading...</div>';
+            }
         }
     }
 
@@ -438,7 +717,11 @@ export class DashboardManager {
 
         // Check if Chart.js is available
         if (typeof Chart === 'undefined') {
-            console.error('Chart.js is not loaded');
+            console.error('Chart.js is not loaded. Please include Chart.js library.');
+            const chartContainer = chartCanvas.parentElement;
+            if (chartContainer) {
+                chartContainer.innerHTML = '<p style="text-align: center; color: #666;">Chart library not loaded. Please refresh the page.</p>';
+            }
             return;
         }
 
@@ -500,8 +783,15 @@ export class DashboardManager {
                     }
                 }
             });
+
+            console.log('Attendance chart initialized successfully');
+
         } catch (error) {
             console.error('Error initializing chart:', error);
+            const chartContainer = chartCanvas.parentElement;
+            if (chartContainer) {
+                chartContainer.innerHTML = '<p style="text-align: center; color: #dc2626;">Failed to load chart. Please refresh the page.</p>';
+            }
         }
     }
 
@@ -553,11 +843,33 @@ export class DashboardManager {
         calendarEl.innerHTML = calendarHTML;
     }
 
+    // Cleanup method to remove event listeners
+    destroy() {
+        // Remove event listeners
+        this.eventListeners.forEach((handler, event) => {
+            window.removeEventListener(event, handler);
+        });
+        this.eventListeners.clear();
+        
+        // Destroy charts
+        this.destroyCharts();
+        
+        // Clear loading states
+        this.loadingStates.clear();
+        
+        // Clear user context
+        this.userContext = null;
+        
+        console.log('Dashboard manager destroyed');
+    }
+
     // Unified message display method
     showMessage(message, type) {
         // Try to use global uiUtils if available
         if (window.uiUtils && typeof window.uiUtils.showMessage === 'function') {
             window.uiUtils.showMessage(message, type);
+        } else if (this.authManager && typeof this.authManager.showMessage === 'function') {
+            this.authManager.showMessage(message, type);
         } else {
             // Fallback to console logging
             console[type === 'error' ? 'error' : 'log'](`${type}: ${message}`);

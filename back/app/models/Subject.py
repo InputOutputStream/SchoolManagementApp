@@ -1,4 +1,4 @@
-# app/models/subject.py
+# app/models/Subject.py
 from app import db
 from datetime import datetime
 
@@ -11,9 +11,10 @@ class Subject(db.Model):
     coefficient = db.Column(db.Integer, default=1)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relationships
+    # Relationships - backrefs handled by other models
     assignments = db.relationship('TeacherAssignment', backref='subject', lazy=True)
-    # Removed invalid grades relationship
+    # evaluations backref created in Evaluation model
+    # grades backref created in Grade model
     
     def to_dict(self):
         return {

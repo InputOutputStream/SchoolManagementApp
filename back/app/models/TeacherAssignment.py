@@ -22,8 +22,8 @@ class TeacherAssignment(db.Model):
         db.UniqueConstraint('teacher_id', 'subject_id', 'classroom_id', 'academic_year'),
     )
     
-    def to_dict(self):
-        return {
+    def to_dict(self, include_relationships=True):
+        result = {
             'id': self.id,
             'teacher_id': self.teacher_id,
             'subject_id': self.subject_id,
@@ -31,8 +31,21 @@ class TeacherAssignment(db.Model):
             'academic_year': self.academic_year,
             'assigned_by': self.assigned_by,
             'assigned_date': self.assigned_date.isoformat(),
-            'is_active': self.is_active,
-            'teacher': self.teacher.user.to_dict() if self.teacher and self.teacher.user else None,
-            'subject': self.subject.to_dict() if self.subject else None,
-            'classroom': self.classroom.to_dict() if self.classroom else None
+            'is_active': self.is_active
         }
+        
+        if include_relationships:
+            result.update({
+                'teacher': {
+                    'id': self.teacher.id,
+                    'name': f"{self.teacher.user.first_name} {self.teacher.user.last_name}"
+                } if self.teacher and self.teacher.user else None,
+                'subject': self.subject.to_dict() if self.subject else None,
+                'classroom': {
+                    'id': self.classroom.id,
+                    'name': self.classroom.name,
+                    'level': self.classroom.level
+                } if self.classroom else None
+            })
+        
+        return result

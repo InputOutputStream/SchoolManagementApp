@@ -71,7 +71,7 @@ export class GradesReportsManager {
                 const endpointConfig = {
                     path: `/grades/classroom/${classroomId}`,
                     method: 'GET',
-                    requiredRole: 'teacher'
+                    requiredRole: ['teacher', 'admin']
                 };
                 const grades = await this.authManager.apiClient.get(endpointConfig);
                 return Array.isArray(grades) ? grades : [];

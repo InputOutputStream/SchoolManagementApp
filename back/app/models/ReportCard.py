@@ -1,4 +1,4 @@
-# app/models/report_card.py
+# app/models/ReportCard.py
 from app import db
 from datetime import datetime
 
@@ -10,13 +10,25 @@ class ReportCard(db.Model):
     evaluation_period_id = db.Column(db.Integer, db.ForeignKey('evaluation_periods.id'), nullable=False)
     generated_by = db.Column(db.Integer, db.ForeignKey('teachers.id'), nullable=False)
     generation_date = db.Column(db.DateTime, default=datetime.utcnow)
-    overall_average = db.Column(db.Numeric(4, 2))
+    overall_average = db.Column(db.Numeric(5, 2))  # Changed to 5,2 for better precision
     class_rank = db.Column(db.Integer)
     total_students = db.Column(db.Integer)
     teacher_comments = db.Column(db.Text)
     file_path = db.Column(db.String(500))
     
-    # Fixed relationship with explicit foreign_keys
+    # Fixed relationships with explicit foreign_keys and backrefs
+    student = db.relationship(
+        'Student', 
+        foreign_keys=[student_id], 
+        backref=db.backref('report_cards', lazy=True)
+    )
+    
+    evaluation_period = db.relationship(
+        'EvaluationPeriod', 
+        foreign_keys=[evaluation_period_id], 
+        backref=db.backref('report_cards', lazy=True)
+    )
+    
     generator = db.relationship(
         'Teacher',
         foreign_keys=[generated_by],
@@ -35,6 +47,6 @@ class ReportCard(db.Model):
             'total_students': self.total_students,
             'teacher_comments': self.teacher_comments,
             'file_path': self.file_path,
-            'student': self.student.to_dict() if self.student else None,
+            'student': self.student.to_dict(include_relationships=False) if self.student else None,
             'evaluation_period': self.evaluation_period.to_dict() if self.evaluation_period else None
         }

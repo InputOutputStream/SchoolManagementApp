@@ -1,13 +1,13 @@
-# app/models/user.py
+# app/models/User.py
 from app import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from enum import Enum
 
 class UserRole(Enum):
-    ADMIN = "admin"
-    TEACHER = "teacher"
-    STUDENT = "student"
+    ADMIN = "ADMIN"
+    TEACHER = "TEACHER"  
+    STUDENT = "STUDENT"
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -22,24 +22,24 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships - Fixed with explicit foreign_keys
+    # Relationships - Fixed to prevent conflicts
     student_profile = db.relationship(
         'Student', 
-        backref='user', 
         uselist=False, 
         cascade='all, delete-orphan',
-        foreign_keys='Student.user_id'
+        foreign_keys='Student.user_id',
+        back_populates='user'
     )
     
     teacher_profile = db.relationship(
         'Teacher', 
-        backref='user', 
         uselist=False, 
         cascade='all, delete-orphan',
-        foreign_keys='Teacher.user_id'
+        foreign_keys='Teacher.user_id',
+        back_populates='user'
     )
     
-    audit_logs = db.relationship('AuditLog', backref='user', lazy=True)
+    # Remove duplicate audit_logs relationship (it's defined in AuditLog)
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)

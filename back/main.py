@@ -6,6 +6,8 @@ from flask_cors import CORS
 
 app = create_app()
 
+
+
 @app.cli.command()
 def init_db():
     """Initialize database"""

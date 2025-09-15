@@ -5,9 +5,7 @@ import { AttendanceManager } from './attendanceManager.js';
 import { GradesReportsManager } from './gradesReportsManager.js';
 import { FileImportManager } from './fileImportManager.js';
 import { UIUtils } from './uiUtils.js';
-import { API_CONFIG } from './config.js';
-
-//***********************************************************************************************************
+import { API_CONFIG, ROLES, hasPermission, getUserContext } from './config.js';
 
 // Global Application State
 class SchoolManagementApp {
@@ -20,8 +18,8 @@ class SchoolManagementApp {
         this.fileImportManager = null;
         this.uiUtils = null;
         this.isInitialized = false;
-        // FIXED: Track global references for cleanup
         this.globalReferences = new Set();
+        this.userContext = null;
     }
 
     async initialize() {
@@ -33,7 +31,7 @@ class SchoolManagementApp {
         try {
             console.log('Initializing School Management System...');
 
-            // FIXED: Validate module imports
+            // Validate module imports
             if (!AuthManager || !DashboardManager || !UIUtils) {
                 throw new Error('Required modules failed to load');
             }
@@ -52,7 +50,7 @@ class SchoolManagementApp {
             this.gradesReportsManager = new GradesReportsManager(this.authManager);
             this.fileImportManager = new FileImportManager(this.authManager, this.dashboardManager);
 
-            // FIXED: Make managers globally accessible with cleanup tracking
+            // Make managers globally accessible with cleanup tracking
             this.setGlobalReference('authManager', this.authManager);
             this.setGlobalReference('dashboardManager', this.dashboardManager);
             this.setGlobalReference('studentManager', this.studentManager);
@@ -67,6 +65,9 @@ class SchoolManagementApp {
             // Setup global event handlers
             this.setupGlobalHandlers();
 
+            // Setup role-based access control
+            this.setupRoleBasedAccess();
+
             this.isInitialized = true;
             console.log('Application initialized successfully');
 
@@ -76,13 +77,125 @@ class SchoolManagementApp {
         }
     }
 
-    // FIXED: Add method to track global references
+    setupRoleBasedAccess() {
+        // Listen for user context changes
+        window.addEventListener('userLoggedIn', () => {
+            this.updateUserContext();
+            this.setupUIForUserRole();
+        });
+
+        window.addEventListener('userLoggedOut', () => {
+            this.userContext = null;
+            this.resetUIForLogout();
+        });
+    }
+
+    updateUserContext() {
+        if (this.authManager?.currentUser) {
+            this.userContext = getUserContext(this.authManager.currentUser);
+            console.log('App user context updated:', this.userContext);
+        }
+    }
+
+    setupUIForUserRole() {
+        if (!this.userContext) return;
+
+        const { role } = this.userContext;
+
+        // Hide/show navigation items based on role
+        const navigationItems = {
+            'teachersLink': role === ROLES.ADMIN,
+            'classroomsManagement': role === ROLES.ADMIN,
+            'subjectsManagement': role === ROLES.ADMIN,
+            'systemSettings': role === ROLES.ADMIN,
+            'myClassroomsLink': role === ROLES.TEACHER,
+            'myStudentsLink': role === ROLES.TEACHER
+        };
+
+        Object.entries(navigationItems).forEach(([elementId, shouldShow]) => {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.style.display = shouldShow ? 'block' : 'none';
+                if (shouldShow) {
+                    element.classList.remove('hidden');
+                } else {
+                    element.classList.add('hidden');
+                }
+            }
+        });
+
+        // Update user interface elements
+        this.updateUserInterface();
+    }
+
+    updateUserInterface() {
+        if (!this.userContext) return;
+
+        // Update user display
+        const userInitialsEl = document.getElementById('userInitials');
+        if (userInitialsEl && this.authManager.currentUser) {
+            const { first_name, last_name } = this.authManager.currentUser;
+            if (first_name && last_name) {
+                const initials = (first_name[0] + last_name[0]).toUpperCase();
+                userInitialsEl.textContent = initials;
+            }
+        }
+
+        // Update role-specific welcome messages
+        const welcomeMessage = document.getElementById('welcomeMessage');
+        if (welcomeMessage) {
+            const roleText = this.userContext.role === ROLES.ADMIN ? 'Administrator' : 'Teacher';
+            welcomeMessage.textContent = `Welcome, ${roleText}`;
+        }
+
+        // Update context-specific labels and hints
+        this.updateContextualHelp();
+    }
+
+    updateContextualHelp() {
+        if (!this.userContext) return;
+
+        const helpTexts = {
+            studentsHelp: this.userContext.canAccessAll 
+                ? 'You can view and manage all students in the system.'
+                : 'You can view students from your assigned classrooms.',
+            attendanceHelp: this.userContext.canAccessAll
+                ? 'You can record attendance for any classroom.'
+                : 'You can record attendance for classrooms you teach.',
+            reportsHelp: this.userContext.canAccessAll
+                ? 'You can generate reports for all students and classrooms.'
+                : 'You can generate reports for your assigned students.'
+        };
+
+        Object.entries(helpTexts).forEach(([elementId, text]) => {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = text;
+            }
+        });
+    }
+
+    resetUIForLogout() {
+        // Hide all role-specific elements
+        const elementsToHide = [
+            'teachersLink', 'classroomsManagement', 'subjectsManagement',
+            'systemSettings', 'myClassroomsLink', 'myStudentsLink'
+        ];
+
+        elementsToHide.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.style.display = 'none';
+                element.classList.add('hidden');
+            }
+        });
+    }
+
     setGlobalReference(name, value) {
         window[name] = value;
         this.globalReferences.add(name);
     }
 
-    // FIXED: Add cleanup method
     destroy() {
         // Remove global references
         this.globalReferences.forEach(refName => {
@@ -91,17 +204,19 @@ class SchoolManagementApp {
         this.globalReferences.clear();
         
         // Remove event listeners
-        window.removeEventListener('resize', this.resizeHandler);
-        window.removeEventListener('error', this.errorHandler);
-        window.removeEventListener('unhandledrejection', this.rejectionHandler);
-        document.removeEventListener('visibilitychange', this.visibilityHandler);
-        window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+        if (this.resizeHandler) window.removeEventListener('resize', this.resizeHandler);
+        if (this.errorHandler) window.removeEventListener('error', this.errorHandler);
+        if (this.rejectionHandler) window.removeEventListener('unhandledrejection', this.rejectionHandler);
+        if (this.visibilityHandler) document.removeEventListener('visibilitychange', this.visibilityHandler);
+        if (this.beforeUnloadHandler) window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+        
+        // Cleanup managers
+        if (this.dashboardManager) this.dashboardManager.destroy();
         
         this.isInitialized = false;
     }
 
     initializeUI() {
-        // FIXED: Add null checks with consistent pattern
         this.uiUtils?.initializeSearch();
         this.uiUtils?.addInteractiveFeatures();
         this.uiUtils?.setupNavigation();
@@ -121,17 +236,67 @@ class SchoolManagementApp {
     }
 
     initializeFormValidation() {
-        // Student form validation
+        // Students classroom change handler
         const studentsClassroom = document.getElementById('studentsClassroom');
         if (studentsClassroom) {
-            studentsClassroom.addEventListener('change', () => {
-                this.dashboardManager?.loadStudents(studentsClassroom.value).catch(console.error);
+            studentsClassroom.addEventListener('change', async () => {
+                try {
+                    const classroomId = studentsClassroom.value;
+                    if (classroomId && this.dashboardManager) {
+                        await this.dashboardManager.loadStudents(classroomId);
+                    }
+                } catch (error) {
+                    console.error('Error loading students for classroom:', error);
+                    this.uiUtils?.showMessage('Failed to load students: ' + error.message, 'error');
+                }
             });
         }
+
+        // Add form validation for role-based restrictions
+        this.setupRoleBasedFormValidation();
+    }
+
+    setupRoleBasedFormValidation() {
+        // Validate forms based on user permissions
+        document.addEventListener('submit', (e) => {
+            const form = e.target.closest('form');
+            if (!form) return;
+
+            const formType = form.id || form.dataset.type;
+            if (!formType) return;
+
+            // Check permissions before allowing form submission
+            if (!this.validateFormPermissions(formType)) {
+                e.preventDefault();
+                this.uiUtils?.showMessage('Access denied: Insufficient privileges', 'error');
+                return;
+            }
+        });
+    }
+
+    validateFormPermissions(formType) {
+        if (!this.userContext) return false;
+
+        const permissionMap = {
+            'teacherForm': ROLES.ADMIN,
+            'classroomForm': ROLES.ADMIN,
+            'subjectForm': ROLES.ADMIN,
+            'studentForm': [ROLES.ADMIN, ROLES.TEACHER],
+            'attendanceForm': [ROLES.ADMIN, ROLES.TEACHER],
+            'gradeForm': [ROLES.ADMIN, ROLES.TEACHER]
+        };
+
+        const requiredRole = permissionMap[formType];
+        if (!requiredRole) return true; // No specific restriction
+
+        if (Array.isArray(requiredRole)) {
+            return requiredRole.includes(this.userContext.role);
+        }
+
+        return this.userContext.role === requiredRole;
     }
 
     setupResponsiveHandlers() {
-        // FIXED: Store handler reference for cleanup
         this.resizeHandler = this.debounce(() => {
             if (this.dashboardManager?.attendanceChartInstance) {
                 this.dashboardManager.attendanceChartInstance.resize();
@@ -142,7 +307,6 @@ class SchoolManagementApp {
     }
 
     setupGlobalHandlers() {
-        // FIXED: Store handler references for cleanup
         this.errorHandler = (event) => {
             console.error('Global error:', event.error);
             this.handleGlobalError(event.error);
@@ -178,14 +342,66 @@ class SchoolManagementApp {
         console.log('Global Handlers initialized');
     }
 
+    handleGlobalError(error) {
+        // Don't show error messages for network errors during development
+        if (error?.message?.includes('Network error')) {
+            return;
+        }
+
+        // Handle authentication errors globally
+        if (error?.message?.includes('Session expired') || 
+            error?.message?.includes('Authentication required')) {
+            this.authManager?.logout();
+            return;
+        }
+
+        this.uiUtils?.showMessage('An unexpected error occurred. Please try again.', 'error');
+    }
+
+    handlePageHidden() {
+        console.log('Page hidden - pausing real-time updates');
+        // Could pause auto-refresh timers here
+    }
+
+    handlePageVisible() {
+        console.log('Page visible - resuming real-time updates');
+        // Could resume auto-refresh timers here
+    }
+
+    hasUnsavedChanges() {
+        const forms = document.querySelectorAll('form');
+        for (const form of forms) {
+            const inputs = form.querySelectorAll('input, textarea, select');
+            for (const input of inputs) {
+                if (input.defaultValue !== input.value || input.defaultChecked !== input.checked) {
+                    return true;
+                }
+            }
+            
+            if (form.checkValidity && !form.checkValidity()) {
+                const modifiedInputs = Array.from(inputs).some(input => 
+                    input.defaultValue !== input.value || input.defaultChecked !== input.checked
+                );
+                if (modifiedInputs) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     async loadClassrooms() {
         try {
-            const classrooms = await this.authManager?.apiCall('GET', API_CONFIG.endpoints.admin.classrooms);
+            if (!this.authManager?.apiClient) {
+                throw new Error('API client not available');
+            }
+
+            const classrooms = await this.authManager.apiClient.get(API_CONFIG.endpoints.admin.classrooms.list);
             this.populateClassroomSelects(classrooms);
             return Array.isArray(classrooms) ? classrooms : [];
         } catch (error) {
             console.error('Error loading classrooms:', error);
-            // Use fallback classrooms
+            // Use fallback classrooms for development
             const fallbackClassrooms = [
                 { id: 1, name: 'Grade 10A', grade_level: '10' },
                 { id: 2, name: 'Grade 10B', grade_level: '10' },
@@ -196,50 +412,6 @@ class SchoolManagementApp {
         }
     }
 
-    handleGlobalError(error) {
-        // Don't show error messages for network errors during development
-        if (error?.message?.includes('Network error')) {
-            return;
-        }
-
-        // FIXED: Use consistent optional chaining
-        this.uiUtils?.showMessage('An unexpected error occurred. Please try again.', 'error');
-    }
-
-    handlePageHidden() {
-        console.log('Page hidden - could implement session management');
-    }
-
-    handlePageVisible() {
-        console.log('Page visible - could refresh session');
-    }
-
-    // FIXED: Corrected form validation logic
-    hasUnsavedChanges() {
-        const forms = document.querySelectorAll('form');
-        for (const form of forms) {
-            // Check if form has been modified
-            const inputs = form.querySelectorAll('input, textarea, select');
-            for (const input of inputs) {
-                if (input.defaultValue !== input.value || input.defaultChecked !== input.checked) {
-                    return true; // Found unsaved changes
-                }
-            }
-            
-            // Check for validation errors (indicates user interaction)
-            if (form.checkValidity && !form.checkValidity()) {
-                // Form has validation errors - check if it was modified
-                const modifiedInputs = Array.from(inputs).some(input => 
-                    input.defaultValue !== input.value || input.defaultChecked !== input.checked
-                );
-                if (modifiedInputs) {
-                    return true; // Has validation errors AND modifications
-                }
-            }
-        }
-        return false;
-    }
-
     populateClassroomSelects(classrooms) {
         const selects = [
             'attendanceClassroom',
@@ -247,7 +419,6 @@ class SchoolManagementApp {
             'reportClassroom'
         ];
 
-        // FIXED: Cache DOM references for performance
         const selectElements = {};
         selects.forEach(selectId => {
             selectElements[selectId] = document.getElementById(selectId);
@@ -255,14 +426,12 @@ class SchoolManagementApp {
 
         Object.values(selectElements).forEach(select => {
             if (select) {
-                // Clear existing options except the first one
                 const firstOption = select.querySelector('option');
                 select.innerHTML = '';
                 if (firstOption) {
                     select.appendChild(firstOption);
                 }
 
-                // Add classroom options
                 classrooms?.forEach(classroom => {
                     const option = document.createElement('option');
                     option.value = classroom.id;
@@ -273,16 +442,13 @@ class SchoolManagementApp {
         });
     }
 
-    // FIXED: Sanitize error messages to prevent XSS
     sanitizeErrorMessage(message) {
         if (typeof message !== 'string') {
             return 'Unknown error';
         }
-        // Remove HTML tags and limit length
         return message.replace(/<[^>]*>/g, '').substring(0, 200);
     }
 
-    // FIXED: Use textContent instead of innerHTML to prevent XSS
     showCriticalError(message) {
         const errorDiv = document.createElement('div');
         errorDiv.style.cssText = `
@@ -305,7 +471,7 @@ class SchoolManagementApp {
 
         const messageP = document.createElement('p');
         messageP.style.cssText = 'margin: 0 0 1rem 0;';
-        messageP.textContent = message; // FIXED: Use textContent instead of innerHTML
+        messageP.textContent = message;
 
         const reloadButton = document.createElement('button');
         reloadButton.style.cssText = `
@@ -322,7 +488,6 @@ class SchoolManagementApp {
         document.body.appendChild(errorDiv);
     }
 
-    // Utility method for debouncing
     debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
@@ -336,9 +501,7 @@ class SchoolManagementApp {
     }
 }
 
-//***********************************************************************************************************
-
-// FIXED: Add request deduplication for async operations
+// Request deduplication for async operations
 const pendingRequests = new Map();
 
 function createDedupedAsyncFunction(key, asyncFn) {
@@ -358,7 +521,7 @@ function createDedupedAsyncFunction(key, asyncFn) {
     };
 }
 
-// Global Functions (for HTML onclick handlers) - FIXED: Add comprehensive error handling
+// Global Functions with Role-Based Access Control
 function showSection(sectionName) {
     try {
         if (window.uiUtils) {
@@ -383,7 +546,6 @@ function logout() {
     }
 }
 
-// FIXED: Add comprehensive error handling to async function
 async function viewStudentDetails(studentId) {
     if (!studentId) {
         console.error('Student ID is required');
@@ -391,6 +553,13 @@ async function viewStudentDetails(studentId) {
     }
 
     try {
+        // Check if user has permission to view student details
+        const userContext = window.authManager?.currentUser;
+        if (!userContext) {
+            window.uiUtils?.showMessage('Please login to view student details', 'error');
+            return;
+        }
+
         if (window.studentManager && window.uiUtils) {
             const student = await window.studentManager.getStudent(studentId);
             window.uiUtils.showStudentModal(student);
@@ -399,7 +568,7 @@ async function viewStudentDetails(studentId) {
         }
     } catch (error) {
         console.error('Error fetching student details:', error);
-        window.uiUtils?.showMessage('Failed to load student details', 'error');
+        window.uiUtils?.showMessage('Failed to load student details: ' + error.message, 'error');
     }
 }
 
@@ -419,18 +588,36 @@ const loadClassroomForAttendance = createDedupedAsyncFunction('loadAttendance', 
         window.uiUtils?.showMessage('Please select both a classroom and date', 'error');
         return;
     }
+
+    // Check if user can access this classroom
+    const userContext = getUserContext(window.authManager?.currentUser);
+    if (!userContext) {
+        window.uiUtils?.showMessage('Please login to access attendance', 'error');
+        return;
+    }
+
+    if (!userContext.canAccessAll && window.dashboardManager) {
+        const canAccess = window.dashboardManager.canAccessClassroom(parseInt(classroomId));
+        if (!canAccess) {
+            window.uiUtils?.showMessage('Access denied: You can only view attendance for your assigned classrooms', 'error');
+            return;
+        }
+    }
     
     try {
         window.uiUtils?.showLoading('attendanceStudentsList', true);
         
-        // Load existing attendance using the structured config
+        // Load existing attendance and students
         let attendanceData = [];
+        let students = [];
+        
         if (window.attendanceManager) {
             attendanceData = await window.attendanceManager.loadClassroomAttendance(classroomId, date);
         }
         
-        // Load students for the classroom using the structured config
-        const students = await window.dashboardManager?.loadStudents(classroomId);
+        if (window.dashboardManager) {
+            students = await window.dashboardManager.loadStudents(classroomId);
+        }
         
         // Display attendance list
         if (window.attendanceManager) {
@@ -445,9 +632,24 @@ const loadClassroomForAttendance = createDedupedAsyncFunction('loadAttendance', 
     }
 });
 
-// FIXED: Add comprehensive error handling
 async function saveAttendance(classroomId, date) {
     try {
+        // Validate user permissions
+        const userContext = getUserContext(window.authManager?.currentUser);
+        if (!userContext || !hasPermission(userContext.role, 'RECORD_ATTENDANCE')) {
+            window.uiUtils?.showMessage('Access denied: You do not have permission to save attendance', 'error');
+            return;
+        }
+
+        // Check classroom access for teachers
+        if (!userContext.canAccessAll && window.dashboardManager) {
+            const canAccess = window.dashboardManager.canAccessClassroom(parseInt(classroomId));
+            if (!canAccess) {
+                window.uiUtils?.showMessage('Access denied: You can only save attendance for your assigned classrooms', 'error');
+                return;
+            }
+        }
+
         if (window.attendanceManager) {
             await window.attendanceManager.saveAttendance(classroomId, date);
         }
@@ -459,6 +661,13 @@ async function saveAttendance(classroomId, date) {
 
 function clearAttendance() {
     try {
+        // Check basic permissions
+        const userContext = getUserContext(window.authManager?.currentUser);
+        if (!userContext || !hasPermission(userContext.role, 'RECORD_ATTENDANCE')) {
+            window.uiUtils?.showMessage('Access denied: You do not have permission to modify attendance', 'error');
+            return;
+        }
+
         if (window.attendanceManager) {
             window.attendanceManager.clearAttendance();
         }
@@ -468,7 +677,6 @@ function clearAttendance() {
     }
 }
 
-// FIXED: Add deduplication and comprehensive error handling
 const generateReports = createDedupedAsyncFunction('generateReports', async function() {
     const classroomSelect = document.getElementById('reportClassroom');
     const periodSelect = document.getElementById('reportPeriod');
@@ -484,6 +692,22 @@ const generateReports = createDedupedAsyncFunction('generateReports', async func
     if (!classroomId || !periodId) {
         window.uiUtils?.showMessage('Please select both a classroom and evaluation period', 'error');
         return;
+    }
+
+    // Validate user permissions
+    const userContext = getUserContext(window.authManager?.currentUser);
+    if (!userContext || !hasPermission(userContext.role, 'GENERATE_REPORTS')) {
+        window.uiUtils?.showMessage('Access denied: You do not have permission to generate reports', 'error');
+        return;
+    }
+
+    // Check classroom access for teachers
+    if (!userContext.canAccessAll && window.dashboardManager) {
+        const canAccess = window.dashboardManager.canAccessClassroom(parseInt(classroomId));
+        if (!canAccess) {
+            window.uiUtils?.showMessage('Access denied: You can only generate reports for your assigned classrooms', 'error');
+            return;
+        }
     }
     
     try {
@@ -508,6 +732,13 @@ const generateReports = createDedupedAsyncFunction('generateReports', async func
 
 function downloadReport(reportId) {
     try {
+        // Validate permissions
+        const userContext = getUserContext(window.authManager?.currentUser);
+        if (!userContext || !hasPermission(userContext.role, 'VIEW_REPORTS')) {
+            window.uiUtils?.showMessage('Access denied: You do not have permission to download reports', 'error');
+            return;
+        }
+
         if (window.gradesReportsManager) {
             window.gradesReportsManager.downloadReport(reportId);
         } else {
@@ -522,6 +753,25 @@ function downloadReport(reportId) {
 
 function handleFileImport(event, type) {
     try {
+        // Validate permissions based on import type
+        const userContext = getUserContext(window.authManager?.currentUser);
+        if (!userContext) {
+            window.uiUtils?.showMessage('Please login to import files', 'error');
+            return;
+        }
+
+        const importPermissions = {
+            'students': 'CREATE_STUDENTS',
+            'grades': 'ADD_GRADES',
+            'attendance': 'RECORD_ATTENDANCE'
+        };
+
+        const requiredPermission = importPermissions[type];
+        if (requiredPermission && !hasPermission(userContext.role, requiredPermission)) {
+            window.uiUtils?.showMessage(`Access denied: You do not have permission to import ${type}`, 'error');
+            return;
+        }
+
         if (window.fileImportManager) {
             window.fileImportManager.handleFileImport(event, type);
         } else {
@@ -535,6 +785,13 @@ function handleFileImport(event, type) {
 
 function downloadTemplate(type) {
     try {
+        // Basic permission check - teachers and admins can download templates
+        const userContext = getUserContext(window.authManager?.currentUser);
+        if (!userContext || ![ROLES.ADMIN, ROLES.TEACHER].includes(userContext.role)) {
+            window.uiUtils?.showMessage('Access denied: You do not have permission to download templates', 'error');
+            return;
+        }
+
         if (window.fileImportManager) {
             window.fileImportManager.downloadTemplate(type);
         } else {
@@ -546,9 +803,15 @@ function downloadTemplate(type) {
     }
 }
 
-// FIXED: Add comprehensive error handling
 async function handleGradeSubmission(event) {
     try {
+        // Validate grade submission permissions
+        const userContext = getUserContext(window.authManager?.currentUser);
+        if (!userContext || !hasPermission(userContext.role, 'ADD_GRADES')) {
+            window.uiUtils?.showMessage('Access denied: You do not have permission to submit grades', 'error');
+            return;
+        }
+
         if (window.gradesReportsManager) {
             await window.gradesReportsManager.handleGradeSubmission(event);
         } else {
@@ -570,7 +833,7 @@ function closeGradeForm() {
     }
 }
 
-// FIXED: Protect against redefinition
+// Protect against redefinition
 if (!window.schoolAppGlobalsInitialized) {
     window.showSection = showSection;
     window.logout = logout;
@@ -587,7 +850,7 @@ if (!window.schoolAppGlobalsInitialized) {
     window.schoolAppGlobalsInitialized = true;
 }
 
-// FIXED: Add comprehensive error handling to initialization
+// Initialize application
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         const app = new SchoolManagementApp();
@@ -622,5 +885,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// Export for module usage
 export { SchoolManagementApp };

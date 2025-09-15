@@ -1,4 +1,4 @@
-# app/models/teacher.py
+# app/models/Teacher.py
 from app import db
 from datetime import datetime, date
 
@@ -13,7 +13,10 @@ class Teacher(db.Model):
     is_head_teacher = db.Column(db.Boolean, default=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     
-    # Relationships with explicit foreign_keys to avoid ambiguity
+    # Fixed relationships - removed conflicting ones
+    user = db.relationship('User', foreign_keys=[user_id], back_populates='teacher_profile')
+    creator = db.relationship('User', foreign_keys=[created_by], backref='created_teachers')
+    
     head_of_classrooms = db.relationship(
         'Classroom', 
         backref='head_teacher', 
@@ -24,22 +27,19 @@ class Teacher(db.Model):
     assignments = db.relationship(
         'TeacherAssignment', 
         backref='teacher', 
-        lazy=True,
-        foreign_keys='TeacherAssignment.teacher_id'
+        lazy=True
     )
     
-    # REMOVED the grades relationship since Grade no longer has teacher_id
-    # Teachers will access grades through their evaluations instead:
-    # teacher.created_evaluations -> evaluation.grades
-    
-    creator = db.relationship(
-        'User', 
-        foreign_keys=[created_by], 
-        backref='created_teachers'
+    # This creates the backref 'created_evaluations' on Teacher
+    created_evaluations = db.relationship(
+        'Evaluation',
+        foreign_keys='Evaluation.created_by',
+        backref='creator',
+        lazy=True
     )
     
-    def to_dict(self):
-        return {
+    def to_dict(self, include_relationships=True):
+        result = {
             'id': self.id,
             'user_id': self.user_id,
             'employee_number': self.employee_number,
@@ -47,7 +47,13 @@ class Teacher(db.Model):
             'hire_date': self.hire_date.isoformat(),
             'is_head_teacher': self.is_head_teacher,
             'created_by': self.created_by,
-            'user': self.user.to_dict() if self.user else None,
-            'head_of_classrooms': [c.to_dict() for c in self.head_of_classrooms],
-            'assignments': [a.to_dict() for a in self.assignments]
+            'user': self.user.to_dict() if self.user else None
         }
+        
+        if include_relationships:
+            result.update({
+                'head_of_classrooms': [{'id': c.id, 'name': c.name, 'level': c.level} for c in self.head_of_classrooms],
+                'assignments': [a.to_dict(include_relationships=False) for a in self.assignments]
+            })
+        
+        return result

@@ -1,0 +1,890 @@
+/**
+ * Comprehensive Test Suite for School Management System Frontend
+ * Tests all major functionality including authentication, navigation, data management, and UI interactions
+ */
+
+class TestSuite {
+    constructor() {
+        this.testResults = [];
+        this.currentTestGroup = '';
+        this.mockData = this.setupMockData();
+        this.originalFetch = window.fetch;
+        this.setupMockAPI();
+    }
+
+    setupMockData() {
+        return {
+            users: {
+                admin: {
+                    id: 1,
+                    first_name: 'Admin',
+                    last_name: 'User',
+                    email: 'admin@test.com',
+                    role: 'admin'
+                },
+                teacher: {
+                    id: 2,
+                    first_name: 'John',
+                    last_name: 'Teacher',
+                    email: 'teacher@test.com',
+                    role: 'teacher'
+                }
+            },
+            classrooms: [
+                { id: 1, name: 'Grade 10A', grade_level: '10' },
+                { id: 2, name: 'Grade 10B', grade_level: '10' }
+            ],
+            students: [
+                {
+                    id: 1,
+                    student_number: 'STU001',
+                    user: { first_name: 'Alice', last_name: 'Student', email: 'alice@test.com' },
+                    classroom: { id: 1, name: 'Grade 10A' }
+                },
+                {
+                    id: 2,
+                    student_number: 'STU002',
+                    user: { first_name: 'Bob', last_name: 'Student', email: 'bob@test.com' },
+                    classroom: { id: 1, name: 'Grade 10A' }
+                }
+            ],
+            teachers: [
+                {
+                    id: 1,
+                    employee_number: 'TEA001',
+                    user: { first_name: 'John', last_name: 'Teacher', email: 'john@test.com' },
+                    specialization: 'Mathematics'
+                }
+            ],
+            attendance: [
+                { id: 1, student_id: 1, status: 'present', date: '2024-01-15' },
+                { id: 2, student_id: 2, status: 'absent', date: '2024-01-15' }
+            ]
+        };
+    }
+
+    setupMockAPI() {
+        window.fetch = async (url, options) => {
+            const method = options?.method || 'GET';
+            const body = options?.body ? JSON.parse(options.body) : null;
+            
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Route mock responses
+            if (url.includes('/auth/login')) {
+                if (body?.email === 'admin@test.com') {
+                    return this.mockResponse({
+                        access_token: 'mock-admin-token',
+                        user: this.mockData.users.admin
+                    });
+                } else if (body?.email === 'teacher@test.com') {
+                    return this.mockResponse({
+                        access_token: 'mock-teacher-token',
+                        user: this.mockData.users.teacher
+                    });
+                } else {
+                    return this.mockResponse({ message: 'Invalid credentials' }, 401);
+                }
+            }
+
+            if (url.includes('/admin/dashboard/stats')) {
+                return this.mockResponse({
+                    total_students: 150,
+                    total_teachers: 12,
+                    present_today: 142
+                });
+            }
+
+            if (url.includes('/students')) {
+                if (url.includes('classroom')) {
+                    const classroomId = url.match(/classroom\/(\d+)/)?.[1];
+                    const filteredStudents = this.mockData.students.filter(s => 
+                        s.classroom.id === parseInt(classroomId)
+                    );
+                    return this.mockResponse(filteredStudents);
+                }
+                return this.mockResponse(this.mockData.students);
+            }
+
+            if (url.includes('/admin/classrooms')) {
+                return this.mockResponse(this.mockData.classrooms);
+            }
+
+            if (url.includes('/admin/teachers')) {
+                return this.mockResponse(this.mockData.teachers);
+            }
+
+            if (url.includes('/attendance')) {
+                return this.mockResponse(this.mockData.attendance);
+            }
+
+            // Default successful response
+            return this.mockResponse({ success: true });
+        };
+    }
+
+    mockResponse(data, status = 200) {
+        return Promise.resolve({
+            ok: status >= 200 && status < 300,
+            status,
+            json: () => Promise.resolve(data)
+        });
+    }
+
+    // Test utilities
+    log(message, type = 'info') {
+        const timestamp = new Date().toISOString();
+        const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+        console.log(logEntry);
+        
+        this.testResults.push({
+            group: this.currentTestGroup,
+            message,
+            type,
+            timestamp
+        });
+    }
+
+    assert(condition, message) {
+        if (condition) {
+            this.log(`✓ ${message}`, 'pass');
+            return true;
+        } else {
+            this.log(`✗ ${message}`, 'fail');
+            return false;
+        }
+    }
+
+    async sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // DOM helper methods
+    getElementById(id) {
+        const element = document.getElementById(id);
+        this.assert(element !== null, `Element with ID '${id}' exists`);
+        return element;
+    }
+
+    clickElement(element) {
+        if (element) {
+            element.click();
+            this.log(`Clicked element: ${element.tagName}#${element.id || 'no-id'}`);
+            return true;
+        }
+        return false;
+    }
+
+    fillInput(element, value) {
+        if (element) {
+            element.value = value;
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+            this.log(`Filled input ${element.id || element.name} with: ${value}`);
+            return true;
+        }
+        return false;
+    }
+
+    // Test Groups
+
+    async runAllTests() {
+        this.log('Starting comprehensive frontend test suite', 'info');
+        
+        try {
+            await this.testDOMInitialization();
+            await this.testAuthManagerFunctionality();
+            await this.testUIUtilsFunctionality();
+            await this.testDashboardManagerFunctionality();
+            await this.testStudentManagerFunctionality();
+            await this.testAttendanceManagerFunctionality();
+            await this.testGradesReportsManagerFunctionality();
+            await this.testFileImportManagerFunctionality();
+            await this.testNavigationAndRouting();
+            await this.testErrorHandling();
+            await this.testAccessControl();
+            
+            this.generateTestReport();
+        } catch (error) {
+            this.log(`Test suite failed with error: ${error.message}`, 'error');
+        }
+    }
+
+    async testDOMInitialization() {
+        this.currentTestGroup = 'DOM Initialization';
+        this.log('Testing DOM initialization...', 'info');
+
+        // Test essential DOM elements exist
+        const essentialElements = [
+            'authSection',
+            'dashboardSection',
+            'loginForm',
+            'email',
+            'password',
+            'dashboardContent',
+            'attendanceContent',
+            'studentsContent'
+        ];
+
+        essentialElements.forEach(id => {
+            this.getElementById(id);
+        });
+
+        // Test that application initializes
+        this.assert(typeof SchoolManagementApp === 'function', 'SchoolManagementApp class is defined');
+        
+        if (window.app) {
+            this.assert(window.app instanceof SchoolManagementApp, 'App instance exists');
+            this.assert(window.app.isInitialized, 'App is initialized');
+        }
+    }
+
+    async testAuthManagerFunctionality() {
+        this.currentTestGroup = 'Authentication Manager';
+        this.log('Testing AuthManager functionality...', 'info');
+
+        if (!window.authManager) {
+            this.log('AuthManager not found, skipping tests', 'warn');
+            return;
+        }
+
+        const authManager = window.authManager;
+
+        // Test initial state
+        this.assert(authManager.currentUser === null, 'Initial user state is null');
+        this.assert(authManager.token === null, 'Initial token is null');
+
+        // Test login form validation
+        const emailInput = this.getElementById('email');
+        const passwordInput = this.getElementById('password');
+        
+        if (emailInput && passwordInput) {
+            // Test empty form submission
+            this.fillInput(emailInput, '');
+            this.fillInput(passwordInput, '');
+            
+            try {
+                await authManager.handleLogin();
+                // Should show error for empty fields
+            } catch (error) {
+                this.log('Empty login correctly rejected', 'pass');
+            }
+
+            // Test successful login
+            this.fillInput(emailInput, 'admin@test.com');
+            this.fillInput(passwordInput, 'password');
+            
+            try {
+                await authManager.handleLogin();
+                await this.sleep(200);
+                
+                this.assert(authManager.currentUser !== null, 'User logged in successfully');
+                this.assert(authManager.token !== null, 'Auth token received');
+                this.assert(authManager.currentUser.role === 'admin', 'Admin role assigned correctly');
+            } catch (error) {
+                this.log(`Login test failed: ${error.message}`, 'fail');
+            }
+        }
+
+        // Test logout
+        if (authManager.currentUser) {
+            authManager.logout();
+            this.assert(authManager.currentUser === null, 'User logged out successfully');
+            this.assert(authManager.token === null, 'Token cleared on logout');
+        }
+    }
+
+    async testUIUtilsFunctionality() {
+        this.currentTestGroup = 'UI Utils';
+        this.log('Testing UIUtils functionality...', 'info');
+
+        if (!window.uiUtils) {
+            this.log('UIUtils not found, skipping tests', 'warn');
+            return;
+        }
+
+        const uiUtils = window.uiUtils;
+
+        // Test section navigation
+        const sections = ['dashboard', 'attendance', 'students', 'reports'];
+        
+        for (const section of sections) {
+            uiUtils.showSection(section);
+            await this.sleep(100);
+            
+            const sectionContent = document.getElementById(section + 'Content');
+            if (sectionContent) {
+                this.assert(
+                    !sectionContent.classList.contains('hidden'), 
+                    `Section ${section} displays correctly`
+                );
+            }
+        }
+
+        // Test message display
+        uiUtils.showMessage('Test message', 'info');
+        await this.sleep(100);
+        
+        const messageContainer = document.getElementById('messageContainer');
+        this.assert(messageContainer !== null, 'Message container created');
+
+        // Test modal functionality
+        const modal = uiUtils.showModal('<p>Test modal content</p>', 'Test Modal');
+        this.assert(modal !== null, 'Modal created successfully');
+        this.assert(modal.style.display === 'block', 'Modal is visible');
+        
+        uiUtils.closeModal(modal);
+        await this.sleep(100);
+        this.assert(modal.style.display === 'none', 'Modal closed successfully');
+
+        // Test search initialization
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            uiUtils.initializeSearch();
+            this.fillInput(searchInput, 'test search');
+            await this.sleep(500); // Wait for debounce
+            this.log('Search functionality initialized', 'pass');
+        }
+    }
+
+    async testDashboardManagerFunctionality() {
+        this.currentTestGroup = 'Dashboard Manager';
+        this.log('Testing DashboardManager functionality...', 'info');
+
+        if (!window.dashboardManager || !window.authManager) {
+            this.log('DashboardManager or AuthManager not found, skipping tests', 'warn');
+            return;
+        }
+
+        const dashboardManager = window.dashboardManager;
+        
+        // Mock login first
+        window.authManager.currentUser = this.mockData.users.admin;
+        window.authManager.token = 'mock-admin-token';
+
+        // Test loading dashboard data
+        try {
+            await dashboardManager.loadDashboardData();
+            this.log('Dashboard data loaded successfully', 'pass');
+        } catch (error) {
+            this.log(`Dashboard data loading failed: ${error.message}`, 'fail');
+        }
+
+        // Test loading students
+        try {
+            const students = await dashboardManager.loadStudents();
+            this.assert(Array.isArray(students), 'Students data is array');
+            this.assert(students.length > 0, 'Students data contains records');
+        } catch (error) {
+            this.log(`Students loading failed: ${error.message}`, 'fail');
+        }
+
+        // Test loading classrooms
+        try {
+            const classrooms = await dashboardManager.loadClassrooms();
+            this.assert(Array.isArray(classrooms), 'Classrooms data is array');
+        } catch (error) {
+            this.log(`Classrooms loading failed: ${error.message}`, 'fail');
+        }
+    }
+
+    async testStudentManagerFunctionality() {
+        this.currentTestGroup = 'Student Manager';
+        this.log('Testing StudentManager functionality...', 'info');
+
+        if (!window.studentManager) {
+            this.log('StudentManager not found, skipping tests', 'warn');
+            return;
+        }
+
+        const studentManager = window.studentManager;
+
+        // Test data validation
+        const validStudentData = {
+            first_name: 'Test',
+            last_name: 'Student',
+            email: 'test@example.com',
+            student_number: 'TST001'
+        };
+
+        const errors = studentManager.validateStudentData(validStudentData);
+        this.assert(errors.length === 0, 'Valid student data passes validation');
+
+        // Test invalid data
+        const invalidData = {
+            first_name: '',
+            last_name: 'Student',
+            email: 'invalid-email',
+            student_number: 'AB'
+        };
+
+        const invalidErrors = studentManager.validateStudentData(invalidData);
+        this.assert(invalidErrors.length > 0, 'Invalid student data fails validation');
+
+        // Test email validation
+        this.assert(studentManager.validateEmail('test@example.com'), 'Valid email passes validation');
+        this.assert(!studentManager.validateEmail('invalid-email'), 'Invalid email fails validation');
+
+        // Test student number validation
+        this.assert(studentManager.validateStudentNumber('STU001'), 'Valid student number passes');
+        this.assert(!studentManager.validateStudentNumber('AB'), 'Short student number fails');
+    }
+
+    async testAttendanceManagerFunctionality() {
+        this.currentTestGroup = 'Attendance Manager';
+        this.log('Testing AttendanceManager functionality...', 'info');
+
+        if (!window.attendanceManager) {
+            this.log('AttendanceManager not found, skipping tests', 'warn');
+            return;
+        }
+
+        const attendanceManager = window.attendanceManager;
+
+        // Test attendance data validation
+        const validAttendanceData = {
+            classroom_id: 1,
+            date: '2024-01-15',
+            attendance_records: [
+                { student_id: 1, status: 'present' },
+                { student_id: 2, status: 'absent' }
+            ]
+        };
+
+        const errors = attendanceManager.validateAttendanceData(validAttendanceData);
+        this.assert(errors.length === 0, 'Valid attendance data passes validation');
+
+        // Test invalid data
+        const invalidData = {
+            classroom_id: null,
+            date: '',
+            attendance_records: []
+        };
+
+        const invalidErrors = attendanceManager.validateAttendanceData(invalidData);
+        this.assert(invalidErrors.length > 0, 'Invalid attendance data fails validation');
+
+        // Test attendance status validation
+        this.assert(attendanceManager.isValidAttendanceStatus('present'), 'Valid status accepted');
+        this.assert(!attendanceManager.isValidAttendanceStatus('invalid'), 'Invalid status rejected');
+
+        // Test display functionality
+        const mockStudents = this.mockData.students;
+        const mockAttendance = this.mockData.attendance;
+        
+        attendanceManager.displayAttendanceList(mockStudents, mockAttendance, 1, '2024-01-15');
+        
+        const attendanceList = document.getElementById('attendanceStudentsList');
+        if (attendanceList) {
+            this.assert(attendanceList.innerHTML.includes('attendance-item'), 'Attendance list rendered');
+        }
+    }
+
+    async testGradesReportsManagerFunctionality() {
+        this.currentTestGroup = 'Grades & Reports Manager';
+        this.log('Testing GradesReportsManager functionality...', 'info');
+
+        if (!window.gradesReportsManager) {
+            this.log('GradesReportsManager not found, skipping tests', 'warn');
+            return;
+        }
+
+        const gradesManager = window.gradesReportsManager;
+
+        // Test grade data validation
+        const validGradeData = {
+            student_id: 1,
+            subject_id: 1,
+            evaluation_period_id: 1,
+            grade: 15.5,
+            evaluation_date: '2024-01-15'
+        };
+
+        const errors = gradesManager.validateGradeData(validGradeData);
+        this.assert(errors.length === 0, 'Valid grade data passes validation');
+
+        // Test invalid grade data
+        const invalidGradeData = {
+            student_id: null,
+            subject_id: null,
+            evaluation_period_id: null,
+            grade: 25, // Out of range
+            evaluation_date: '2024-12-31' // Future date
+        };
+
+        const invalidErrors = gradesManager.validateGradeData(invalidGradeData);
+        this.assert(invalidErrors.length > 0, 'Invalid grade data fails validation');
+
+        // Test utility methods
+        this.assert(gradesManager.getGradeLevel(18) === 'Excellent', 'Grade level calculation works');
+        this.assert(gradesManager.getGradeLevel(15) === 'Good', 'Grade level calculation works');
+        this.assert(gradesManager.getGradeLevel(8) === 'Fail', 'Grade level calculation works');
+
+        // Test GPA calculation
+        const mockGrades = [
+            { grade: '15' },
+            { grade: '16' },
+            { grade: '14' }
+        ];
+        const gpa = gradesManager.calculateGPA(mockGrades);
+        this.assert(gpa === 15, 'GPA calculation is correct');
+    }
+
+    async testFileImportManagerFunctionality() {
+        this.currentTestGroup = 'File Import Manager';
+        this.log('Testing FileImportManager functionality...', 'info');
+
+        if (!window.fileImportManager) {
+            this.log('FileImportManager not found, skipping tests', 'warn');
+            return;
+        }
+
+        const fileManager = window.fileImportManager;
+
+        // Test boolean parsing
+        this.assert(fileManager.parseBoolean(true) === true, 'Boolean true parsed correctly');
+        this.assert(fileManager.parseBoolean('true') === true, 'String "true" parsed correctly');
+        this.assert(fileManager.parseBoolean('yes') === true, 'String "yes" parsed correctly');
+        this.assert(fileManager.parseBoolean('1') === true, 'String "1" parsed correctly');
+        this.assert(fileManager.parseBoolean(1) === true, 'Number 1 parsed correctly');
+        this.assert(fileManager.parseBoolean(false) === false, 'Boolean false parsed correctly');
+        this.assert(fileManager.parseBoolean('false') === false, 'String "false" parsed correctly');
+        this.assert(fileManager.parseBoolean('no') === false, 'String "no" parsed correctly');
+        this.assert(fileManager.parseBoolean('0') === false, 'String "0" parsed correctly');
+        this.assert(fileManager.parseBoolean(0) === false, 'Number 0 parsed correctly');
+
+        // Test template download functionality
+        try {
+            fileManager.downloadTemplate('students');
+            this.log('Students template download initiated', 'pass');
+        } catch (error) {
+            this.log(`Template download failed: ${error.message}`, 'fail');
+        }
+    }
+
+    async testNavigationAndRouting() {
+        this.currentTestGroup = 'Navigation & Routing';
+        this.log('Testing navigation and routing...', 'info');
+
+        // Test global navigation functions
+        if (typeof window.showSection === 'function') {
+            this.assert(true, 'showSection function is available');
+            
+            // Test section switching
+            const sections = ['dashboard', 'attendance', 'students', 'reports'];
+            for (const section of sections) {
+                try {
+                    window.showSection(section);
+                    await this.sleep(100);
+                    this.log(`Navigation to ${section} successful`, 'pass');
+                } catch (error) {
+                    this.log(`Navigation to ${section} failed: ${error.message}`, 'fail');
+                }
+            }
+        } else {
+            this.log('showSection function not available - checking alternatives', 'warn');
+            
+            // Check if UIUtils has showSection method
+            if (window.uiUtils && typeof window.uiUtils.showSection === 'function') {
+                this.assert(true, 'UIUtils.showSection method is available');
+                
+                const sections = ['dashboard', 'attendance', 'students', 'reports'];
+                for (const section of sections) {
+                    try {
+                        window.uiUtils.showSection(section);
+                        await this.sleep(100);
+                        this.log(`UIUtils navigation to ${section} successful`, 'pass');
+                    } catch (error) {
+                        this.log(`UIUtils navigation to ${section} failed: ${error.message}`, 'fail');
+                    }
+                }
+            } else {
+                this.log('No navigation methods found', 'warn');
+            }
+        }
+
+        // Test sidebar navigation
+        const sidebarLinks = document.querySelectorAll('.sidebar a[data-section]');
+        this.assert(sidebarLinks.length > 0, 'Sidebar navigation links exist');
+
+        // Test clicking sidebar links if navigation method available
+        if (sidebarLinks.length > 0 && (window.showSection || (window.uiUtils && window.uiUtils.showSection))) {
+            try {
+                const firstLink = sidebarLinks[0];
+                const sectionName = firstLink.getAttribute('data-section');
+                
+                // Simulate click
+                firstLink.click();
+                await this.sleep(200);
+                this.log(`Sidebar link click for ${sectionName} executed`, 'pass');
+            } catch (error) {
+                this.log(`Sidebar link click failed: ${error.message}`, 'fail');
+            }
+        }
+    }
+
+    async testErrorHandling() {
+        this.currentTestGroup = 'Error Handling';
+        this.log('Testing error handling...', 'info');
+
+        // Test network error handling
+        const originalFetch = window.fetch;
+        window.fetch = () => Promise.reject(new Error('Network error'));
+
+        try {
+            if (window.authManager) {
+                await window.authManager.apiClient.get('/test-endpoint');
+            }
+        } catch (error) {
+            this.assert(error.message.includes('Network error'), 'Network errors handled correctly');
+        }
+
+        // Test 401 error handling
+        window.fetch = () => Promise.resolve({
+            ok: false,
+            status: 401,
+            json: () => Promise.resolve({ message: 'Unauthorized' })
+        });
+
+        try {
+            if (window.authManager) {
+                await window.authManager.apiClient.get('/test-endpoint');
+            }
+        } catch (error) {
+            this.assert(error.message.includes('Session expired'), '401 errors trigger logout');
+        }
+
+        // Restore original fetch
+        window.fetch = this.originalFetch;
+    }
+
+    async testAccessControl() {
+        this.currentTestGroup = 'Access Control';
+        this.log('Testing access control...', 'info');
+
+        if (!window.authManager) {
+            this.log('AuthManager not found, skipping access control tests', 'warn');
+            return;
+        }
+
+        // Test admin-only features
+        window.authManager.currentUser = this.mockData.users.admin;
+        window.authManager.token = 'mock-admin-token';
+
+        // Admin should have access to teacher management
+        const teachersLink = document.getElementById('teachersLink');
+        if (teachersLink) {
+            this.assert(!teachersLink.classList.contains('hidden'), 'Admin can access teacher management');
+        }
+
+        // Test teacher role
+        window.authManager.currentUser = this.mockData.users.teacher;
+        window.authManager.token = 'mock-teacher-token';
+
+        // Teachers should not have admin features
+        if (teachersLink) {
+            // This would need to be tested after role-based UI updates
+            this.log('Teacher role access control tested', 'info');
+        }
+
+        // Test unauthenticated state
+        window.authManager.currentUser = null;
+        window.authManager.token = null;
+
+        // Should redirect to login
+        const authSection = document.getElementById('authSection');
+        if (authSection) {
+            this.assert(authSection.style.display !== 'none', 'Unauthenticated users see login form');
+        }
+    }
+
+    generateTestReport() {
+        this.log('Generating test report...', 'info');
+
+        const groupedResults = this.testResults.reduce((groups, result) => {
+            if (!groups[result.group]) {
+                groups[result.group] = { pass: 0, fail: 0, warn: 0, info: 0 };
+            }
+            groups[result.group][result.type]++;
+            return groups;
+        }, {});
+
+        console.log('\n=== TEST REPORT ===');
+        console.log(`Total tests: ${this.testResults.length}`);
+        
+        let totalPass = 0, totalFail = 0, totalWarn = 0;
+        
+        Object.entries(groupedResults).forEach(([group, stats]) => {
+            console.log(`\n${group}:`);
+            console.log(`  ✓ Pass: ${stats.pass}`);
+            console.log(`  ✗ Fail: ${stats.fail}`);
+            console.log(`  ⚠ Warn: ${stats.warn}`);
+            console.log(`  ℹ Info: ${stats.info}`);
+            
+            totalPass += stats.pass;
+            totalFail += stats.fail;
+            totalWarn += stats.warn;
+        });
+
+        console.log('\n=== SUMMARY ===');
+        console.log(`✓ Total Passed: ${totalPass}`);
+        console.log(`✗ Total Failed: ${totalFail}`);
+        console.log(`⚠ Total Warnings: ${totalWarn}`);
+        console.log(`Success Rate: ${((totalPass / (totalPass + totalFail)) * 100).toFixed(1)}%`);
+
+        // Store results for later access
+        window.testResults = this.testResults;
+        window.testSummary = { totalPass, totalFail, totalWarn, groupedResults };
+
+        return {
+            success: totalFail === 0,
+            totalTests: totalPass + totalFail,
+            passed: totalPass,
+            failed: totalFail,
+            warnings: totalWarn
+        };
+    }
+
+    // Cleanup method
+    cleanup() {
+        // Restore original fetch
+        window.fetch = this.originalFetch;
+        
+        // Clear mock data
+        if (window.authManager) {
+            window.authManager.currentUser = null;
+            window.authManager.token = null;
+        }
+        
+        this.log('Test cleanup completed', 'info');
+    }
+}
+
+// Integration with SchoolManagementApp
+class TestIntegration {
+    static initialize() {
+        // Add test controls to the application
+        if (window.location.hostname === 'localhost' || window.location.search.includes('debug=true')) {
+            TestIntegration.addTestControls();
+        }
+        
+        // Auto-run tests if requested
+        if (window.location.search.includes('autotest=true')) {
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(() => {
+                    console.log('Auto-running tests...');
+                    window.runTests();
+                }, 2000); // Wait for app initialization
+            });
+        }
+    }
+    
+    static addTestControls() {
+        // Add test button to the UI (only in development)
+        const testButton = document.createElement('div');
+        testButton.id = 'testControls';
+        testButton.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10001;
+            background: #1e293b;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            font-size: 12px;
+            min-width: 200px;
+        `;
+        
+        testButton.innerHTML = `
+            <div style="margin-bottom: 8px; font-weight: bold;">🧪 Test Controls</div>
+            <button onclick="window.runQuickTests()" style="margin: 2px; padding: 4px 8px; background: #059669; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Quick Tests</button>
+            <button onclick="window.runTests()" style="margin: 2px; padding: 4px 8px; background: #0ea5e9; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Full Tests</button>
+            <button onclick="TestIntegration.showTestResults()" style="margin: 2px; padding: 4px 8px; background: #8b5cf6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Results</button>
+            <button onclick="TestIntegration.toggleTestControls()" style="margin: 2px; padding: 4px 8px; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Hide</button>
+        `;
+        
+        document.body.appendChild(testButton);
+    }
+    
+    static toggleTestControls() {
+        const controls = document.getElementById('testControls');
+        if (controls) {
+            controls.style.display = controls.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+    
+    static showTestResults() {
+        if (window.testSummary) {
+            const summary = window.testSummary;
+            const modal = window.uiUtils?.showModal(`
+                <div style="font-family: monospace;">
+                    <h3>Test Results Summary</h3>
+                    <p>✓ Passed: ${summary.totalPass}</p>
+                    <p>✗ Failed: ${summary.totalFail}</p>
+                    <p>⚠ Warnings: ${summary.totalWarn}</p>
+                    <p>Success Rate: ${((summary.totalPass / (summary.totalPass + summary.totalFail)) * 100).toFixed(1)}%</p>
+                    <br>
+                    <details>
+                        <summary>Detailed Results</summary>
+                        <pre style="max-height: 300px; overflow-y: auto;">${JSON.stringify(summary.groupedResults, null, 2)}</pre>
+                    </details>
+                    <br>
+                    <button onclick="console.log('Full results:', window.testResults)" style="padding: 8px 12px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">Log Full Results</button>
+                </div>
+            `, 'Test Results');
+        } else {
+            alert('No test results available. Run tests first.');
+        }
+    }
+}
+
+// Usage functions
+window.runTests = async function() {
+    const testSuite = new TestSuite();
+    
+    try {
+        const results = await testSuite.runAllTests();
+        console.log('Testing completed:', results);
+        
+        // Show notification in UI
+        if (window.uiUtils) {
+            const message = results.success ? 
+                `All tests passed! (${results.passed}/${results.totalTests})` :
+                `${results.failed} tests failed out of ${results.totalTests}`;
+            window.uiUtils.showMessage(message, results.success ? 'success' : 'error');
+        }
+        
+        return results;
+    } finally {
+        testSuite.cleanup();
+    }
+};
+
+window.runQuickTests = async function() {
+    const testSuite = new TestSuite();
+    
+    try {
+        await testSuite.testDOMInitialization();
+        await testSuite.testAuthManagerFunctionality();
+        await testSuite.testUIUtilsFunctionality();
+        const results = testSuite.generateTestReport();
+        
+        // Show notification in UI
+        if (window.uiUtils) {
+            window.uiUtils.showMessage('Quick tests completed', 'info');
+        }
+        
+        return results;
+    } finally {
+        testSuite.cleanup();
+    }
+};
+
+// Initialize test integration
+TestIntegration.initialize();
+
+console.log('Test suite loaded. Use runTests() or runQuickTests() to start testing.');
+
+export { TestSuite, TestIntegration };
