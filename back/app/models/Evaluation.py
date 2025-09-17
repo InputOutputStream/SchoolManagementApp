@@ -44,7 +44,6 @@ class Evaluation(db.Model):
     subject = db.relationship('Subject', backref='evaluations')
     classroom = db.relationship('Classroom', backref='evaluations')
     # Remove this line completely - backref defined in Teacher model
-    # creator = db.relationship('Teacher', foreign_keys=[created_by], backref='created_evaluations')
     
     def to_dict(self, include_relationships=True):
         result = {

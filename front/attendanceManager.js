@@ -115,17 +115,24 @@ export class AttendanceManager {
     validateAttendanceData(attendanceData) {
         const errors = [];
 
-        if (!attendanceData.classroom_id) {
-            errors.push('Classroom ID is required');
+        // FIX: Validate classroom_id as integer
+        if (!attendanceData.classroom_id || !Number.isInteger(attendanceData.classroom_id)) {
+            errors.push('Valid classroom ID is required');
         }
 
+        // FIX: Validate date format YYYY-MM-DD
         if (!attendanceData.date) {
             errors.push('Date is required');
+        } else if (!/^\d{4}-\d{2}-\d{2}$/.test(attendanceData.date)) {
+            errors.push('Date must be in YYYY-MM-DD format');
         } else {
             const date = new Date(attendanceData.date);
             const today = new Date();
+            today.setHours(23, 59, 59, 999); // Allow today's date
             
-            if (date > today) {
+            if (isNaN(date.getTime())) {
+                errors.push('Invalid date format');
+            } else if (date > today) {
                 errors.push('Cannot record attendance for future dates');
             }
         }
@@ -135,14 +142,14 @@ export class AttendanceManager {
         } else if (attendanceData.attendance_records.length === 0) {
             errors.push('At least one attendance record is required');
         } else {
-            // Validate individual attendance records
+            // FIX: Validate individual records more strictly
             attendanceData.attendance_records.forEach((record, index) => {
-                if (!record.student_id) {
-                    errors.push(`Student ID is required for record ${index + 1}`);
+                if (!record.student_id || !Number.isInteger(record.student_id)) {
+                    errors.push(`Valid student ID is required for record ${index + 1}`);
                 }
 
                 if (!record.status || !this.isValidAttendanceStatus(record.status)) {
-                    errors.push(`Valid status is required for record ${index + 1}`);
+                    errors.push(`Valid status (present, absent, late, excused) is required for record ${index + 1}`);
                 }
             });
         }
@@ -259,8 +266,8 @@ export class AttendanceManager {
         }
 
         const attendanceData = {
-            classroom_id: parseInt(classroomId),
-            date: date,
+            classroom_id: parseInt(classroomId), // FIX: Ensure integer
+            date: date, // FIX: Ensure YYYY-MM-DD format
             attendance_records: []
         };
 
@@ -268,16 +275,23 @@ export class AttendanceManager {
             const studentId = item.dataset.studentId;
             const status = item.value;
             
-            if (studentId && status) {
+            // FIX: Validate data before adding
+            if (studentId && status && this.isValidAttendanceStatus(status)) {
                 attendanceData.attendance_records.push({
-                    student_id: parseInt(studentId),
+                    student_id: parseInt(studentId), // FIX: Ensure integer
                     status: status
                 });
             }
         });
 
+        // FIX: Validate required fields
+        if (!attendanceData.classroom_id || !attendanceData.date) {
+            this.showMessage('Classroom ID and date are required', 'error');
+            return;
+        }
+
         if (attendanceData.attendance_records.length === 0) {
-            this.showMessage('No attendance records to save', 'error');
+            this.showMessage('No valid attendance records to save', 'error');
             return;
         }
 
@@ -289,6 +303,7 @@ export class AttendanceManager {
             throw error;
         }
     }
+
 
     clearAttendance() {
         const attendanceItems = document.querySelectorAll('.attendance-status');

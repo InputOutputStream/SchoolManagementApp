@@ -17,13 +17,13 @@ def init_db():
 @app.cli.command()
 def create_admin():
     """Create admin user"""
-    from app.models.User import User, UserRole
+    from app.models.User import User
     
     admin = User(
         email='admin@ecole.com',
         first_name='Admin',
         last_name='System',
-        role=UserRole.ADMIN
+        role='admin' # Fixed: String role
     )
     admin.set_password('admin123')
     

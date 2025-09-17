@@ -300,6 +300,40 @@ export class FileImportManager {
         }
     }
 
+    async processStudentsImport(data, successCount, errorCount, errors) {
+        const requiredFields = ['first_name', 'last_name', 'email', 'student_number'];
+        const results = [];
+
+        for (let i = 0; i < data.length; i++) {
+            const row = data[i];
+            try {
+                const missingFields = requiredFields.filter(field => !row[field]);
+                if (missingFields.length > 0) {
+                    throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+                }
+                results.push({ data: row });
+            } catch (error) {
+                errors.push(`Row ${i + 2}: ${error.message}`);
+                errorCount++;
+            }
+        }
+
+        // Effectuer les imports uniquement si toutes les validations passent
+        if (errors.length === 0) {
+            for (const result of results) {
+                try {
+                    await this.authManager.apiClient.post('/students/register', result.data);
+                    successCount++;
+                } catch (error) {
+                    errors.push(`Row ${result.data.student_number}: ${error.message}`);
+                    errorCount++;
+                }
+            }
+        }
+
+        return { successCount, errorCount, errors };
+    }
+
     downloadTemplate(type) {
         const templates = {
             students: [

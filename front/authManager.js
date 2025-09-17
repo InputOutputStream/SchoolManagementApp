@@ -24,36 +24,53 @@ export class AuthManager {
         this.setupEventListeners();
     }
 
-
     setupEventListeners() {
-        // Attendre que le DOM soit complètement chargé
+        // Wait for DOM to be ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
                 this.setupRoleListeners();
                 this.setupFormListeners();
+                this.setupLogoutListener(); // FIX: Add logout listener
             });
         } else {
             this.setupRoleListeners();
             this.setupFormListeners();
+            this.setupLogoutListener(); // FIX: Add logout listener
+        }
+    }
+
+    // FIX: Add missing logout button event listener
+    setupLogoutListener() {
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.logout();
+            });
+        } else {
+            // Use event delegation if button not found immediately
+            document.addEventListener('click', (e) => {
+                if (e.target.id === 'logoutBtn' || e.target.closest('#logoutBtn')) {
+                    e.preventDefault();
+                    this.logout();
+                }
+            });
         }
     }
 
     setupRoleListeners() {
-        // Vérifier si les boutons existent
         const roleButtons = document.querySelectorAll('.role-btn');
         console.log('Role buttons found:', roleButtons.length);
         
         if (roleButtons.length === 0) {
             console.warn('No role buttons found. Will use event delegation.');
             
-            // Utiliser la délégation d'événements si les boutons n'existent pas encore
             document.addEventListener('click', (e) => {
                 if (e.target.classList.contains('role-btn')) {
                     this.handleRoleSelection(e.target);
                 }
             });
         } else {
-            // Les boutons existent, ajouter les listeners directement
             roleButtons.forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -64,25 +81,24 @@ export class AuthManager {
     }
 
     handleRoleSelection(btn) {
-        // Retirer la classe active de tous les boutons
-        document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.role-btn').forEach(b => {
+            b.classList.remove('active');
+            b.setAttribute('aria-checked', 'false');
+        });
         
-        // Ajouter la classe active au bouton cliqué
         btn.classList.add('active');
+        btn.setAttribute('aria-checked', 'true');
         
-        // Mettre à jour le rôle sélectionné
         this.selectedRole = btn.dataset.role;
         
         console.log('Role selected:', this.selectedRole);
         
-        // Optionnel : déclencher un événement personnalisé
         window.dispatchEvent(new CustomEvent('roleChanged', { 
             detail: { role: this.selectedRole } 
         }));
     }
 
     setupFormListeners() {
-        // Login form
         const loginForm = document.getElementById('loginForm');
         if (loginForm) {
             loginForm.addEventListener('submit', (e) => {
@@ -91,7 +107,6 @@ export class AuthManager {
             });
         }
 
-        // Teacher form (admin only)
         const teacherForm = document.getElementById('teacherForm');
         if (teacherForm) {
             teacherForm.addEventListener('submit', (e) => {
@@ -100,7 +115,6 @@ export class AuthManager {
             });
         }
 
-        // Classroom form (admin only)
         const classroomForm = document.getElementById('classroomForm');
         if (classroomForm) {
             classroomForm.addEventListener('submit', (e) => {
@@ -109,7 +123,6 @@ export class AuthManager {
             });
         }
 
-        // Subject form (admin only)
         const subjectForm = document.getElementById('subjectForm');
         if (subjectForm) {
             subjectForm.addEventListener('submit', (e) => {
@@ -117,6 +130,77 @@ export class AuthManager {
                 this.handleCreateSubject();
             });
         }
+
+        // FIX: Add file upload listeners  
+        this.setupFileUploadListeners();
+
+        // FIX: Add load students button listener
+        const loadStudentsBtn = document.getElementById('loadStudentsBtn');
+        if (loadStudentsBtn) {
+            loadStudentsBtn.addEventListener('click', () => {
+                window.loadClassroomForAttendance();
+            });
+        }
+
+        // FIX: Add generate reports button listener
+        const generateReportsBtn = document.getElementById('generateReportsBtn');
+        if (generateReportsBtn) {
+            generateReportsBtn.addEventListener('click', () => {
+                window.generateReports();
+            });
+        }
+    }
+
+    // FIX: Add missing file upload event listeners
+    setupFileUploadListeners() {
+        // Students file upload
+        const studentsFileInput = document.getElementById('studentsFileInput');
+        if (studentsFileInput) {
+            studentsFileInput.addEventListener('change', (e) => {
+                window.handleFileImport(e, 'students');
+            });
+        }
+
+        // Teachers file upload
+        const teachersFileInput = document.getElementById('teachersFileInput');
+        if (teachersFileInput) {
+            teachersFileInput.addEventListener('change', (e) => {
+                window.handleFileImport(e, 'teachers');
+            });
+        }
+
+        // Classrooms file upload
+        const classroomsFileInput = document.getElementById('classroomsFileInput');
+        if (classroomsFileInput) {
+            classroomsFileInput.addEventListener('change', (e) => {
+                window.handleFileImport(e, 'classrooms');
+            });
+        }
+
+        // Subjects file upload
+        const subjectsFileInput = document.getElementById('subjectsFileInput');
+        if (subjectsFileInput) {
+            subjectsFileInput.addEventListener('change', (e) => {
+                window.handleFileImport(e, 'subjects');
+            });
+        }
+
+        // Download template buttons
+        const downloadButtons = [
+            { id: 'downloadStudentsTemplate', type: 'students' },
+            { id: 'downloadTeachersTemplate', type: 'teachers' },
+            { id: 'downloadClassroomsTemplate', type: 'classrooms' },
+            { id: 'downloadSubjectsTemplate', type: 'subjects' }
+        ];
+
+        downloadButtons.forEach(({ id, type }) => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    window.downloadTemplate(type);
+                });
+            }
+        });
     }
 
     async handleLogin() {
@@ -131,44 +215,88 @@ export class AuthManager {
         const email = emailInput.value.trim();
         const password = passwordInput.value;
 
+        // FIX: Better validation
         if (!email || !password) {
             this.showMessage('Please enter both email and password.', 'error');
+            return;
+        }
+
+        // FIX: Email format validation
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            this.showMessage('Please enter a valid email address.', 'error');
             return;
         }
 
         this.setLoading(true);
         
         try {
-            // Now properly using the structured endpoint config
+            // FIX: Don't normalize email to lowercase - send as entered
+            const loginData = {
+                email: email, // Don't use toLowerCase()
+                password: password
+            };
+
             const response = await this.apiClient.call(
                 'POST', 
-                API_CONFIG.endpoints.auth.login, // This will extract the path from the config object
-                {
-                    email: email,
-                    password: password
-                }, 
-                false // Override requiresAuth since login endpoint has requiresAuth: false
+                API_CONFIG.endpoints.auth.login,
+                loginData,
+                false // requiresAuth = false for login
             );
             
-            if (response.access_token && response.user) {
+            // FIX: Better response validation
+            if (response && response.access_token && response.user) {
                 this.token = response.access_token;
                 this.currentUser = response.user;
                 this.storeAuth(response.user, response.access_token);
                 this.showMessage('Login successful!', 'success');
                 
+                // FIX: Dispatch login event before showing dashboard
+                window.dispatchEvent(new CustomEvent('userLoggedIn', { 
+                    detail: { user: this.currentUser } 
+                }));
+                
                 setTimeout(() => {
                     this.showDashboard();
-                }, 1000);
+                }, 500); // Reduced delay
             } else {
-                this.showMessage(response.message || 'Login failed - invalid response', 'error');
+                throw new Error(response?.message || 'Invalid response from server');
             }
         } catch (error) {
             console.error('Login error:', error);
-            this.showMessage(error.message || 'Login failed. Please check your credentials.', 'error');
+            // FIX: Better error handling for 422 responses
+            let errorMessage = 'Login failed. Please try again.';
+            
+            if (error.message.includes('422')) {
+                errorMessage = 'Invalid email or password format. Please check your credentials.';
+            } else if (error.message.includes('401')) {
+                errorMessage = 'Invalid email or password. Please try again.';
+            } else if (error.message.includes('Network error')) {
+                errorMessage = 'Network error. Please check your connection and try again.';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            this.showMessage(errorMessage, 'error');
         } finally {
             this.setLoading(false);
         }
     }
+
+    setCurrentDate() {
+        const dateInputs = document.querySelectorAll('input[type="date"]');
+        const today = new Date();
+        // FIX: Ensure proper YYYY-MM-DD format
+        const todayStr = today.getFullYear() + '-' + 
+                        String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                        String(today.getDate()).padStart(2, '0');
+        
+        dateInputs.forEach(input => {
+            if (!input.value) {
+                input.value = todayStr;
+            }
+        });
+    }
+
     async handleCreateTeacher() {
         if (!this.currentUser || this.currentUser.role !== 'admin') {
             this.showMessage('Access denied. Admin privileges required.', 'error');
@@ -184,20 +312,38 @@ export class AuthManager {
         const formData = new FormData(teacherForm);
         const teacherData = Object.fromEntries(formData.entries());
 
+        // FIX: Better data sanitization and validation
+        const sanitizedData = {};
+        for (const [key, value] of Object.entries(teacherData)) {
+            if (typeof value === 'string') {
+                sanitizedData[key] = value.trim() || null;
+            } else {
+                sanitizedData[key] = value;
+            }
+        }
+
+        // FIX: Handle checkbox properly
+        sanitizedData.is_head_teacher = formData.has('is_head_teacher');
+
         const requiredFields = ['first_name', 'last_name', 'email', 'employee_number'];
-        const missingFields = requiredFields.filter(field => !teacherData[field]);
+        const missingFields = requiredFields.filter(field => !sanitizedData[field]);
         
         if (missingFields.length > 0) {
             this.showMessage(`Missing required fields: ${missingFields.join(', ')}`, 'error');
             return;
         }
 
+        // FIX: Email validation
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedData.email)) {
+            this.showMessage('Please enter a valid email address.', 'error');
+            return;
+        }
+
         try {
-            // Using structured endpoint config - API client will handle role validation
             const response = await this.apiClient.call(
                 'POST', 
                 API_CONFIG.endpoints.admin.teachers.create, 
-                teacherData
+                sanitizedData
             );
             
             if (response && (response.message || response.id)) {
@@ -210,10 +356,47 @@ export class AuthManager {
             }
         } catch (error) {
             console.error('Create teacher error:', error);
-            this.showMessage(error.message || 'Failed to create teacher.', 'error');
+            let errorMessage = 'Failed to create teacher.';
+            
+            if (error.message.includes('422')) {
+                errorMessage = 'Invalid data format. Please check all fields.';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            this.showMessage(errorMessage, 'error');
         }
     }
-    
+
+    validateClassroomSelection() {
+        const classroomSelect = document.getElementById('attendanceClassroom');
+        const dateInput = document.getElementById('attendanceDate');
+        
+        if (!classroomSelect || !dateInput) {
+            return { valid: false, message: 'Required form elements not found' };
+        }
+
+        const classroomId = classroomSelect.value;
+        const date = dateInput.value;
+
+        // FIX: Validate classroom selection
+        if (!classroomId || classroomId === '') {
+            return { valid: false, message: 'Please select a classroom' };
+        }
+
+        // FIX: Validate classroom ID is numeric
+        if (!/^\d+$/.test(classroomId)) {
+            return { valid: false, message: 'Invalid classroom selection' };
+        }
+
+        // FIX: Validate date format
+        if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            return { valid: false, message: 'Please select a valid date' };
+        }
+
+        return { valid: true, classroomId: parseInt(classroomId), date };
+    }
+
     async handleCreateClassroom() {
         if (!this.currentUser || this.currentUser.role !== 'admin') {
             this.showMessage('Access denied. Admin privileges required.', 'error');
@@ -229,9 +412,23 @@ export class AuthManager {
         const formData = new FormData(classroomForm);
         const classroomData = Object.fromEntries(formData.entries());
 
-        // Validate required fields
+        // FIX: Sanitize data
+        const sanitizedData = {};
+        for (const [key, value] of Object.entries(classroomData)) {
+            if (typeof value === 'string') {
+                sanitizedData[key] = value.trim() || null;
+            } else {
+                sanitizedData[key] = value;
+            }
+        }
+
+        // Convert capacity to number if provided
+        if (sanitizedData.capacity) {
+            sanitizedData.capacity = parseInt(sanitizedData.capacity);
+        }
+
         const requiredFields = ['name', 'grade_level'];
-        const missingFields = requiredFields.filter(field => !classroomData[field]);
+        const missingFields = requiredFields.filter(field => !sanitizedData[field]);
         
         if (missingFields.length > 0) {
             this.showMessage(`Missing required fields: ${missingFields.join(', ')}`, 'error');
@@ -239,20 +436,27 @@ export class AuthManager {
         }
 
         try {
-            const response = await this.apiClient.call('POST', API_CONFIG.endpoints.admin.classrooms, classroomData);
+            const response = await this.apiClient.call('POST', API_CONFIG.endpoints.admin.classrooms.create, sanitizedData);
             
             if (response && (response.message || response.id)) {
                 this.showMessage('Classroom created successfully!', 'success');
                 classroomForm.reset();
                 
-                // Dispatch event for dashboard to refresh classroom list
                 window.dispatchEvent(new CustomEvent('classroomCreated', { detail: response }));
             } else {
                 this.showMessage('Classroom creation failed - invalid response', 'error');
             }
         } catch (error) {
             console.error('Create classroom error:', error);
-            this.showMessage(error.message || 'Failed to create classroom.', 'error');
+            let errorMessage = 'Failed to create classroom.';
+            
+            if (error.message.includes('422')) {
+                errorMessage = 'Invalid data format. Please check all fields.';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            this.showMessage(errorMessage, 'error');
         }
     }
 
@@ -271,9 +475,23 @@ export class AuthManager {
         const formData = new FormData(subjectForm);
         const subjectData = Object.fromEntries(formData.entries());
 
-        // Validate required fields
+        // FIX: Sanitize data
+        const sanitizedData = {};
+        for (const [key, value] of Object.entries(subjectData)) {
+            if (typeof value === 'string') {
+                sanitizedData[key] = value.trim() || null;
+            } else {
+                sanitizedData[key] = value;
+            }
+        }
+
+        // Convert coefficient to number if provided
+        if (sanitizedData.coefficient) {
+            sanitizedData.coefficient = parseFloat(sanitizedData.coefficient);
+        }
+
         const requiredFields = ['name', 'code'];
-        const missingFields = requiredFields.filter(field => !subjectData[field]);
+        const missingFields = requiredFields.filter(field => !sanitizedData[field]);
         
         if (missingFields.length > 0) {
             this.showMessage(`Missing required fields: ${missingFields.join(', ')}`, 'error');
@@ -281,20 +499,27 @@ export class AuthManager {
         }
 
         try {
-            const response = await this.apiClient.call('POST', API_CONFIG.endpoints.admin.subjects, subjectData);
+            const response = await this.apiClient.call('POST', API_CONFIG.endpoints.admin.subjects.create, sanitizedData);
             
             if (response && (response.message || response.id)) {
                 this.showMessage('Subject created successfully!', 'success');
                 subjectForm.reset();
                 
-                // Dispatch event for dashboard to refresh subject list
                 window.dispatchEvent(new CustomEvent('subjectCreated', { detail: response }));
             } else {
                 this.showMessage('Subject creation failed - invalid response', 'error');
             }
         } catch (error) {
             console.error('Create subject error:', error);
-            this.showMessage(error.message || 'Failed to create subject.', 'error');
+            let errorMessage = 'Failed to create subject.';
+            
+            if (error.message.includes('422')) {
+                errorMessage = 'Invalid data format. Please check all fields.';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            this.showMessage(errorMessage, 'error');
         }
     }
 
@@ -370,7 +595,6 @@ export class AuthManager {
                 messageDiv.innerHTML = '';
             }, 5000);
         } else {
-            // Fallback to console if message div not found
             console.log(`${type.toUpperCase()}: ${message}`);
         }
     }
@@ -395,7 +619,11 @@ export class AuthManager {
         }
     }
 
+    // FIX: Improved logout function
     logout() {
+        console.log('Logout initiated');
+        
+        // Clear user data
         this.currentUser = null;
         this.token = null;
         
@@ -405,13 +633,38 @@ export class AuthManager {
             console.error('Error clearing auth data:', error);
         }
         
+        // FIX: Properly reset UI
         const authSection = document.getElementById('authSection');
         const dashboardSection = document.getElementById('dashboardSection');
         const loginForm = document.getElementById('loginForm');
         
-        if (authSection) authSection.style.display = 'flex';
-        if (dashboardSection) dashboardSection.classList.remove('active');
-        if (loginForm) loginForm.reset();
+        if (authSection) {
+            authSection.style.display = 'flex'; // FIX: Use flex instead of block
+        }
+        if (dashboardSection) {
+            dashboardSection.classList.remove('active');
+        }
+        if (loginForm) {
+            loginForm.reset();
+        }
+        
+        // FIX: Clear form inputs
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        if (emailInput) emailInput.value = '';
+        if (passwordInput) passwordInput.value = '';
+        
+        // FIX: Reset role selector
+        document.querySelectorAll('.role-btn').forEach(btn => {
+            btn.classList.remove('active');
+            btn.setAttribute('aria-checked', 'false');
+        });
+        const defaultRoleBtn = document.querySelector('.role-btn[data-role="teacher"]');
+        if (defaultRoleBtn) {
+            defaultRoleBtn.classList.add('active');
+            defaultRoleBtn.setAttribute('aria-checked', 'true');
+        }
+        this.selectedRole = 'teacher';
         
         this.showMessage('Logged out successfully', 'success');
         
@@ -423,15 +676,16 @@ export class AuthManager {
 
         // Dispatch logout event
         window.dispatchEvent(new CustomEvent('userLoggedOut'));
+        
+        console.log('Logout completed');
     }
 
     initializeDashboard() {
-        // Dispatch dashboard initialization event
         window.dispatchEvent(new CustomEvent('dashboardInitialized'));
         
         this.updateClock();
+        this.setCurrentDate(); // FIX: Set current date on dashboard init
         
-        // Update clock every minute for better performance
         if (this.clockInterval) clearInterval(this.clockInterval);
         this.clockInterval = setInterval(() => this.updateClock(), 60000);
     }

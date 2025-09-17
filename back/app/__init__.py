@@ -6,6 +6,8 @@ from flask_cors import CORS
 from flask_migrate import Migrate
 from datetime import timedelta
 import os
+import logging
+from logging.handlers import RotatingFileHandler
 
 db = SQLAlchemy()
 jwt = JWTManager()
@@ -16,6 +18,45 @@ class TestConfig:
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     WTF_CSRF_ENABLED = False
+
+def setup_logging(app):
+    # Create logs directory if it doesn't exist
+    if not os.path.exists('logs'):
+        os.mkdir('logs')
+    
+    # Set log level
+    log_level = logging.INFO
+    if app.config.get('DEBUG'):
+        log_level = logging.DEBUG
+    
+    # Remove all handlers associated with the root logger
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+    
+    # Create file handler
+    file_handler = RotatingFileHandler(
+        'logs/app.log', 
+        maxBytes=10240, 
+        backupCount=10
+    )
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+    ))
+    file_handler.setLevel(log_level)
+    
+    # Create console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s'
+    ))
+    console_handler.setLevel(log_level)
+    
+    # Add handlers to the root logger
+    logging.getLogger().addHandler(file_handler)
+    logging.getLogger().addHandler(console_handler)
+    logging.getLogger().setLevel(log_level)
+    
+    app.logger.info('Application startup')
 
 # app/__init__.py
 def create_app(config_name=None):

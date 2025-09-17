@@ -1,5 +1,5 @@
 # app/models/__init__.py
-from app.models.User import User, UserRole
+from app.models.User import User
 from app.models.Student import Student
 from app.models.Teacher import Teacher
 from app.models.Classroom import Classroom

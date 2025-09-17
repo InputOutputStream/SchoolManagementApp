@@ -470,7 +470,7 @@ class TestGradeModel:
         ]
         
         students = []
-        for i, (points, letter) in enumerate(grades_data, 1):
+        for i, (points, letter) in enumerate(grades_data, 2):  # Start from 2 to avoid STU001 conflict
             # Create additional students
             user = User(
                 email=f"student{i}@test.com",
@@ -484,7 +484,7 @@ class TestGradeModel:
             
             student = Student(
                 user_id=user.id,
-                student_number=f"STU00{i}",
+                student_number=f"STU00{i}",  # Now generates STU002, STU003, STU004, STU005
                 classroom_id=grade_setup['evaluation'].classroom_id
             )
             db_session.add(student)
@@ -520,7 +520,6 @@ class TestGradeModel:
         
         assert len(top_grades) == 1
         assert top_grades[0].letter_grade == 'A'
-
 
 class TestAttendanceModel:
     """Test CRUD operations for Attendance model"""

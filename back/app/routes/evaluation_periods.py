@@ -2,7 +2,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from app.models.EvaluationPeriod import EvaluationPeriod
-from app.models.User import UserRole
 from app.utils.decorators import role_required, log_action
 from app import db
 from datetime import datetime

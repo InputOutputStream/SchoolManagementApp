@@ -141,6 +141,8 @@ export class DashboardManager {
         }
     }
 
+
+
     async loadAdminStats() {
         this.setLoadingState('adminStats', true);
         
@@ -316,6 +318,22 @@ export class DashboardManager {
             console.warn(`Element with ID '${elementId}' not found`);
         }
     }
+
+
+    sanitizeFormData(formData) {
+        const sanitized = {};
+        
+        for (const [key, value] of Object.entries(formData)) {
+            if (typeof value === 'string') {
+                // FIX: Trim whitespace and handle empty strings
+                sanitized[key] = value.trim() || null;
+            } else {
+                sanitized[key] = value;
+            }
+    }
+    
+    return sanitized;
+}
 
     // Sanitize HTML to prevent XSS
     sanitizeHTML(str) {

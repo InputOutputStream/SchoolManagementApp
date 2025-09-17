@@ -17,9 +17,9 @@ class EvaluationPeriod(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relationships
+    # Relationships - Remove backref conflicts
     evaluations = db.relationship('Evaluation', backref='evaluation_period', lazy=True)
-    report_cards = db.relationship('ReportCard', backref='evaluation_period', lazy=True)
+    # Remove the conflicting line: report_cards relationship will be defined in ReportCard
     
     def to_dict(self):
         return {
@@ -30,6 +30,6 @@ class EvaluationPeriod(db.Model):
             'end_date': self.end_date.isoformat(),
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat(),
-            'evaluations_count': len(self.evaluations)
+            'evaluations_count': len(self.evaluations),
+            'report_cards_count': len(self.report_cards) if hasattr(self, 'report_cards') else 0
         }
-

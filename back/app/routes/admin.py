@@ -1,8 +1,7 @@
 # app/routes/admin.py
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
-from app.models.User import User, UserRole
-from app.models.Evaluation import Evaluation
+from app.models.User import User
 from app.models.Teacher import Teacher
 from app.models.Student import Student
 from app.models.Classroom import Classroom
@@ -13,7 +12,9 @@ from app.services.AuthService import AuthService
 from app.utils.decorators import role_required, log_action
 from app import db
 from datetime import datetime
+import logging
 
+logger = logging.getLogger(__name__)
 admin_bp = Blueprint('admin', __name__)
 
 # TEACHER MANAGEMENT
@@ -25,6 +26,7 @@ def create_teacher(current_user):
     data = request.get_json()
     
     try:
+        logger.info(f"Admin {current_user.id} attempting to create teacher with data: {data}")
         user, teacher = AuthService.create_teacher(current_user, data)
         return jsonify({
             'message': 'Teacher created successfully',
@@ -35,21 +37,16 @@ def create_teacher(current_user):
         db.session.rollback()
         return jsonify({'message': str(e)}), 400
 
-
-
-
-
 @admin_bp.route('/teachers', methods=['GET'])
 @jwt_required()
 @role_required('admin')
 def get_teachers(current_user):
     try:
         teachers = db.session.query(Teacher).join(User).filter(User.is_active == True).all()
+        logger.info(f"Admin {current_user.id} attempting to list teachers: {teachers}")
         return jsonify([teacher.to_dict() for teacher in teachers])
     except Exception as e:
         return jsonify({'message': str(e)}), 400
-
-
 
 @admin_bp.route('/teachers/<int:teacher_id>', methods=['PUT'])
 @jwt_required()
@@ -60,12 +57,10 @@ def update_teacher(current_user, teacher_id):
     data = request.get_json()
     
     try:
-        # Update teacher fields
         for field in ['employee_number', 'specialization', 'hire_date', 'is_head_teacher']:
             if field in data:
                 setattr(teacher, field, data[field])
         
-        # Update user fields
         user = teacher.user
         for field in ['first_name', 'last_name', 'email']:
             if field in data:
@@ -81,10 +76,6 @@ def update_teacher(current_user, teacher_id):
         db.session.rollback()
         return jsonify({'message': str(e)}), 400
 
-
-
-
-
 @admin_bp.route('/teachers/<int:teacher_id>', methods=['DELETE'])
 @jwt_required()
 @role_required('admin')
@@ -94,7 +85,6 @@ def delete_teacher(current_user, teacher_id):
         teacher = Teacher.query.get_or_404(teacher_id)
         user = teacher.user
         
-        # Deactivate instead of delete to preserve data integrity
         user.is_active = False
         db.session.commit()
     
@@ -102,11 +92,6 @@ def delete_teacher(current_user, teacher_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': str(e)}), 400
-
-
-
-
-
 
 @admin_bp.route('/teachers/<int:teacher_id>/promote', methods=['PATCH'])
 @jwt_required()
@@ -117,10 +102,10 @@ def promote_to_admin(current_user, teacher_id):
         teacher = Teacher.query.get_or_404(teacher_id)
         user = teacher.user
         
-        if user.role == UserRole.ADMIN:
+        if user.role == 'admin':
             return jsonify({'message': 'User is already an admin'}), 400
         
-        user.role = UserRole.ADMIN
+        user.role = 'admin'  # Fixed: Use string instead of enum
         db.session.commit()
         
         return jsonify({
@@ -130,10 +115,6 @@ def promote_to_admin(current_user, teacher_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': str(e)}), 400
-
-
-
-
 
 # CLASSROOM MANAGEMENT
 @admin_bp.route('/classrooms', methods=['POST'])
@@ -145,8 +126,8 @@ def create_classroom(current_user):
     
     classroom = Classroom(
         name=data['name'],
-        grade_level=data.get('grade_level', data.get('level')),  # Support both field names
-        academic_year=data.get('academic_year', '2024'),
+        level=data.get('grade_level', data.get('level')),  # Fixed field name
+        academic_year=data.get('academic_year', '2024-2025'),
         max_students=data.get('max_students', 30),
         assigned_by=current_user.id
     )
@@ -159,28 +140,17 @@ def create_classroom(current_user):
         'classroom': classroom.to_dict()
     }), 201
 
-
-
-
-
-
-
-
 @admin_bp.route('/classrooms', methods=['GET'])
 @jwt_required()
-@role_required(['admin', 'teacher'])  # Allow both admin and teacher
+@role_required(['admin', 'teacher'])
 def get_classrooms(current_user):
-    if current_user.role == UserRole.ADMIN:
-        # Admin sees all classrooms
+    if current_user.role == 'admin':  # Fixed: Use string comparison
         classrooms = Classroom.query.all()
     else:
-        # Teacher sees only assigned classrooms
         teacher = current_user.teacher_profile
         if teacher:
-            # Get classrooms where teacher is head teacher
             head_classrooms = Classroom.query.filter_by(head_teacher_id=teacher.id).all()
             
-            # Get classrooms from assignments
             assigned_classrooms = db.session.query(Classroom).join(
                 TeacherAssignment,
                 Classroom.id == TeacherAssignment.classroom_id
@@ -189,19 +159,13 @@ def get_classrooms(current_user):
                 TeacherAssignment.is_active == True
             ).distinct().all()
             
-            # Combine and deduplicate
             all_classrooms = {c.id: c for c in head_classrooms + assigned_classrooms}
             classrooms = list(all_classrooms.values())
         else:
             classrooms = []
     
+    logger.info(f"User {current_user.id} retrieving {len(classrooms)} classrooms")
     return jsonify([classroom.to_dict() for classroom in classrooms])
-
-
-
-
-
-
 
 @admin_bp.route('/classrooms/<int:classroom_id>', methods=['PUT'])
 @jwt_required()
@@ -212,7 +176,7 @@ def update_classroom(current_user, classroom_id):
         classroom = Classroom.query.get_or_404(classroom_id)
         data = request.get_json()
         
-        for field in ['name', 'grade_level', 'max_students', 'academic_year']:
+        for field in ['name', 'level', 'max_students', 'academic_year']:  # Fixed field name
             if field in data:
                 setattr(classroom, field, data[field])
         
@@ -224,8 +188,7 @@ def update_classroom(current_user, classroom_id):
         })
     except Exception as e:
         db.session.rollback()
-        return jsonify({'message': str(e)}), 400    
-    
+        return jsonify({'message': str(e)}), 400
 
 @admin_bp.route('/classrooms/<int:classroom_id>', methods=['DELETE'])
 @jwt_required()
@@ -234,7 +197,6 @@ def update_classroom(current_user, classroom_id):
 def delete_classroom(current_user, classroom_id):
     classroom = Classroom.query.get_or_404(classroom_id)
     
-    # Check if classroom has students
     student_count = Student.query.filter_by(classroom_id=classroom_id, is_enrolled=True).count()
     if student_count > 0:
         return jsonify({'message': 'Cannot delete classroom with enrolled students'}), 400
@@ -244,16 +206,11 @@ def delete_classroom(current_user, classroom_id):
     
     return jsonify({'message': 'Classroom deleted successfully'})
 
-
-
-
-
 @admin_bp.route('/classrooms/<int:classroom_id>/assign-teacher', methods=['POST'])
 @jwt_required()
 @role_required('admin')
 @log_action('ASSIGN_CLASSROOM_HEAD', 'classrooms')
-def assign_classroom_teacher(current_user):
-    classroom_id = request.view_args['classroom_id']
+def assign_classroom_teacher(current_user, classroom_id):
     data = request.get_json()
     teacher_id = data.get('teacher_id')
     
@@ -324,7 +281,6 @@ def update_subject(current_user, subject_id):
 def delete_subject(current_user, subject_id):
     subject = Subject.query.get_or_404(subject_id)
     
-    # Check if subject has assignments
     assignment_count = TeacherAssignment.query.filter_by(subject_id=subject_id, is_active=True).count()
     if assignment_count > 0:
         return jsonify({'message': 'Cannot delete subject with active assignments'}), 400
@@ -334,22 +290,19 @@ def delete_subject(current_user, subject_id):
     
     return jsonify({'message': 'Subject deleted successfully'})
 
-# STUDENT MANAGEMENT (Admin routes)
+# STUDENT MANAGEMENT
 @admin_bp.route('/students', methods=['GET'])
 @jwt_required()
 @role_required(['admin', 'teacher'])
 def get_all_students(current_user):
-    if current_user.role == UserRole.ADMIN:
+    if current_user.role == 'admin':  # Fixed: Use string comparison
         students = Student.query.filter_by(is_enrolled=True).all()
     else:
-        # Teacher sees only their students
         teacher = current_user.teacher_profile
         if teacher:
-            # Get students from head teacher classrooms
             head_classrooms = Classroom.query.filter_by(head_teacher_id=teacher.id).all()
             head_classroom_ids = [c.id for c in head_classrooms]
             
-            # Get students from assigned classrooms
             assigned_classrooms = db.session.query(Classroom.id).join(
                 TeacherAssignment,
                 Classroom.id == TeacherAssignment.classroom_id
@@ -395,21 +348,18 @@ def create_student(current_user):
 def update_student(current_user, student_id):
     student = Student.query.get_or_404(student_id)
     
-    # Check permissions for teachers
-    if current_user.role == UserRole.TEACHER:
+    if current_user.role == 'teacher':  # Fixed: Use string comparison
         teacher = current_user.teacher_profile
-        if not (teacher.is_head_teacher and student.classroom and 
+        if not (teacher and teacher.is_head_teacher and student.classroom and 
                 student.classroom.head_teacher_id == teacher.id):
             return jsonify({'message': 'Only head teacher can update student information'}), 403
     
     data = request.get_json()
     
-    # Update student info
     for field in ['address', 'phone_number', 'parent_name', 'parent_email', 'parent_phone', 'classroom_id']:
         if field in data:
             setattr(student, field, data[field])
     
-    # Update user info
     user = student.user
     for field in ['first_name', 'last_name', 'email']:
         if field in data:
@@ -430,7 +380,6 @@ def delete_student(current_user, student_id):
     student = Student.query.get_or_404(student_id)
     user = student.user
     
-    # Deactivate instead of delete
     user.is_active = False
     student.is_enrolled = False
     db.session.commit()
@@ -445,7 +394,6 @@ def get_dashboard_stats(current_user):
     from app.models.Attendance import Attendance
     from datetime import date
     
-    # Get attendance for today
     today = date.today()
     today_attendance = db.session.query(Attendance).filter_by(date=today).all()
     present_today = sum(1 for att in today_attendance if att.status in ['present', 'late'])
@@ -462,25 +410,6 @@ def get_dashboard_stats(current_user):
     
     return jsonify(stats)
 
-# AUDIT LOGS
-@admin_bp.route('/audit-logs', methods=['GET'])
-@jwt_required()
-@role_required('admin')
-def get_audit_logs(current_user):
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 50, type=int)
-    
-    logs = AuditLog.query.order_by(AuditLog.created_at.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
-    
-    return jsonify({
-        'logs': [log.to_dict() for log in logs.items],
-        'total': logs.total,
-        'pages': logs.pages,
-        'current_page': page
-    })
-
 # ASSIGNMENT MANAGEMENT
 @admin_bp.route('/assignments', methods=['POST'])
 @jwt_required()
@@ -493,7 +422,7 @@ def create_assignment(current_user):
         teacher_id=data['teacher_id'],
         subject_id=data['subject_id'],
         classroom_id=data['classroom_id'],
-        academic_year=data.get('academic_year', '2024'),
+        academic_year=data.get('academic_year', '2024-2025'),
         assigned_by=current_user.id
     )
     

@@ -30,6 +30,6 @@ class AuditLog(db.Model):
             'new_values': self.new_values,
             'ip_address': self.ip_address,
             'user_agent': self.user_agent,
-            'created_at': self.creation_date.isoformat() if self.created_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,  # Fixed: was self.creation_date
             'user': self.user.to_dict() if self.user else None
         }
