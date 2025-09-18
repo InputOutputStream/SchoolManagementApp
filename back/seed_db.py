@@ -15,22 +15,21 @@ def seed_database():
         print("✅ Database tables created")
         
         # Create admin user
-        admin = User.query.filter_by(email='admin@ecole.com').first()
+        admin = User.query.filter_by(email='admin@school.cm').first()
         if not admin:
             admin = User(
-                email='admin@ecole.com',
+                email='admin@school.cm',
                 first_name='Admin',
                 last_name='User', 
-                role='admin'  # String role
+                role='admin'
             )
-            admin.set_password('admin123')
+            admin.set_password('secret')
             db.session.add(admin)
-            print("✅ Created admin: admin@ecole.com / admin123")
+            print("✅ Created admin: admin@school.cm / secret")
         else:
             # Update existing admin to use string role
-            if hasattr(admin.role, 'value'):
-                admin.role = 'admin'
-            admin.set_password('admin123')  # Refresh password
+            admin.role = 'admin'
+            admin.set_password('secret')  # Refresh password
             print("✅ Updated admin user")
         
         # Create teacher user
@@ -40,7 +39,7 @@ def seed_database():
                 email='grace.tanjong@school.cm',
                 first_name='Grace',
                 last_name='Tanjong',
-                role='teacher'  # String role
+                role='teacher'
             )
             teacher_user.set_password('secret')
             db.session.add(teacher_user)
@@ -49,38 +48,37 @@ def seed_database():
             # Create teacher profile
             teacher_profile = Teacher(
                 user_id=teacher_user.id,
-                employee_number='TEA001',
-                specialization='Mathematics',
-                is_head_teacher=True,
+                employee_number='T004',
+                specialization='History and Geography',
+                is_head_teacher=False,
                 created_by=admin.id if admin else None
             )
             db.session.add(teacher_profile)
             print("✅ Created teacher: grace.tanjong@school.cm / secret")
         else:
             # Update existing teacher to use string role
-            if hasattr(teacher_user.role, 'value'):
-                teacher_user.role = 'teacher'
+            teacher_user.role = 'teacher'
             teacher_user.set_password('secret')  # Refresh password
             print("✅ Updated teacher user")
         
         # Create sample classroom
-        classroom = Classroom.query.filter_by(name='Grade 10A').first()
+        classroom = Classroom.query.filter_by(name='Form 1A').first()
         if not classroom:
             classroom = Classroom(
-                name='Grade 10A',
-                level='10',
-                academic_year='2024-2025',
-                max_students=30,
+                name='Form 1A',
+                level='Form 1',
+                academic_year='2025/2026',
+                max_students=45,
                 assigned_by=admin.id if admin else None
             )
             db.session.add(classroom)
-            print("✅ Created sample classroom: Grade 10A")
+            print("✅ Created sample classroom: Form 1A")
         
         # Create sample subjects
         subjects_data = [
-            {'name': 'Mathematics', 'code': 'MATH101', 'coefficient': 2},
-            {'name': 'English', 'code': 'ENG101', 'coefficient': 2},
-            {'name': 'Science', 'code': 'SCI101', 'coefficient': 1.5}
+            {'name': 'Mathematics', 'code': 'MATH', 'coefficient': 3},
+            {'name': 'English Language', 'code': 'ENG', 'coefficient': 3},
+            {'name': 'French', 'code': 'FREN', 'coefficient': 3}
         ]
         
         for subject_data in subjects_data:
@@ -91,27 +89,27 @@ def seed_database():
                 print(f"✅ Created subject: {subject_data['name']}")
         
         # Create sample student
-        student_user = User.query.filter_by(email='john.doe@student.com').first()
+        student_user = User.query.filter_by(email='chi.azeh@student.school.cm').first()
         if not student_user:
             student_user = User(
-                email='john.doe@student.com',
-                first_name='John',
-                last_name='Doe',
-                role='student'  # String role
+                email='chi.azeh@student.school.cm',
+                first_name='Chi',
+                last_name='Azeh',
+                role='student'
             )
-            student_user.set_password('student123')
+            student_user.set_password('secret')
             db.session.add(student_user)
             db.session.flush()
             
             student_profile = Student(
                 user_id=student_user.id,
-                student_number='STU000001',
+                student_number='S2025001',
                 classroom_id=classroom.id if classroom else None,
-                parent_name='Jane Doe',
-                parent_email='jane.doe@parent.com'
+                parent_name='Mr. Azeh',
+                parent_email='parent1@example.com'
             )
             db.session.add(student_profile)
-            print("✅ Created sample student: john.doe@student.com / student123")
+            print("✅ Created sample student: chi.azeh@student.school.cm / secret")
         
         # Fix any existing enum roles
         all_users = User.query.all()
@@ -141,9 +139,9 @@ def seed_database():
         print(f"   Subjects: {Subject.query.count()}")
         
         print("\n🔑 Login Credentials:")
-        print("   Admin: admin@ecole.com / admin123")
+        print("   Admin: admin@school.cm / secret")
         print("   Teacher: grace.tanjong@school.cm / secret")
-        print("   Student: john.doe@student.com / student123")
+        print("   Student: chi.azeh@student.school.cm / secret")
 
 if __name__ == '__main__':
     seed_database()

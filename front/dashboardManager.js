@@ -141,8 +141,6 @@ export class DashboardManager {
         }
     }
 
-
-
     async loadAdminStats() {
         this.setLoadingState('adminStats', true);
         
@@ -319,31 +317,6 @@ export class DashboardManager {
         }
     }
 
-
-    sanitizeFormData(formData) {
-        const sanitized = {};
-        
-        for (const [key, value] of Object.entries(formData)) {
-            if (typeof value === 'string') {
-                // FIX: Trim whitespace and handle empty strings
-                sanitized[key] = value.trim() || null;
-            } else {
-                sanitized[key] = value;
-            }
-    }
-    
-    return sanitized;
-}
-
-    // Sanitize HTML to prevent XSS
-    sanitizeHTML(str) {
-        if (typeof str !== 'string') return '';
-        
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
-
     displayTeachersList(teachers) {
         const teachersList = document.getElementById('teachersList');
         if (!teachersList) {
@@ -415,6 +388,7 @@ export class DashboardManager {
         teachersList.innerHTML = html;
     }
 
+    // FIX: Promote teacher with proper data transformation
     async promoteToAdmin(teacherId, teacherName) {
         if (!this.canAccessTeachers()) {
             this.showMessage('Access denied: Admin privileges required', 'error');
@@ -428,7 +402,14 @@ export class DashboardManager {
             const endpointFunction = API_CONFIG.endpoints.admin.teachers.promoteToAdmin;
             const endpoint = resolveEndpoint(endpointFunction, teacherId);
             
-            const result = await this.authManager.apiClient.patch(endpoint, {});
+            // FIX: Send proper data structure for promotion
+            const promotionData = {
+                role: 'admin', // Update user role to admin
+                promoted_by: this.authManager.currentUser?.id,
+                promotion_date: new Date().toISOString()
+            };
+            
+            const result = await this.authManager.apiClient.patch(endpoint, promotionData);
             
             this.showMessage(`${teacherName} has been promoted to Admin successfully!`, 'success');
             
@@ -442,15 +423,75 @@ export class DashboardManager {
     }
 
     async viewTeacherDetails(teacherId) {
-        // This would show detailed teacher information in a modal
-        this.showMessage(`Viewing details for teacher ID: ${teacherId}`, 'info');
-        // Implementation would fetch and display teacher details
+        try {
+            // FIX: Fetch teacher details with proper endpoint
+            const endpointConfig = {
+                path: `/admin/teachers/${teacherId}`,
+                method: 'GET',
+                requiredRole: ROLES.ADMIN
+            };
+            
+            const teacher = await this.authManager.apiClient.get(endpointConfig);
+            
+            // Display teacher details in modal
+            if (window.uiUtils) {
+                const detailsHTML = this.formatTeacherDetails(teacher);
+                window.uiUtils.showModal(detailsHTML, 'Teacher Details');
+            } else {
+                this.showMessage(`Viewing details for teacher: ${teacher.user?.first_name} ${teacher.user?.last_name}`, 'info');
+            }
+        } catch (error) {
+            console.error('Error viewing teacher details:', error);
+            this.showMessage('Failed to load teacher details: ' + error.message, 'error');
+        }
+    }
+
+    // FIX: Format teacher details for display
+    formatTeacherDetails(teacher) {
+        return `
+            <div class="teacher-details">
+                <div class="detail-row">
+                    <label>Name:</label>
+                    <span>${this.sanitizeHTML(teacher.user?.first_name || 'N/A')} ${this.sanitizeHTML(teacher.user?.last_name || 'N/A')}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Email:</label>
+                    <span>${this.sanitizeHTML(teacher.user?.email || 'N/A')}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Employee Number:</label>
+                    <span>${this.sanitizeHTML(teacher.employee_number || 'N/A')}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Specialization:</label>
+                    <span>${this.sanitizeHTML(teacher.specialization || 'N/A')}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Role:</label>
+                    <span>${teacher.user?.role === 'admin' ? 'Admin' : teacher.is_head_teacher ? 'Head Teacher' : 'Teacher'}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Hire Date:</label>
+                    <span>${teacher.hire_date ? this.formatDate(teacher.hire_date) : 'Not specified'}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Phone:</label>
+                    <span>${this.sanitizeHTML(teacher.phone_number || 'Not specified')}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Status:</label>
+                    <span class="status-badge ${teacher.user?.is_active ? 'active' : 'inactive'}">
+                        ${teacher.user?.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                </div>
+            </div>
+        `;
     }
 
     async editTeacher(teacherId) {
         // This would open an edit form for the teacher
         this.showMessage(`Editing teacher ID: ${teacherId}`, 'info');
-        // Implementation would show edit form
+        // TODO: Implement teacher editing form
     }
 
     async loadStudents(classroomId = null) {
@@ -517,6 +558,7 @@ export class DashboardManager {
                         <th>Student ID</th>
                         <th>Name</th>
                         <th>Classroom</th>
+                        <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -528,13 +570,19 @@ export class DashboardManager {
             const studentNumber = this.sanitizeHTML(student.student_number || 'N/A');
             const firstName = this.sanitizeHTML(student.user?.first_name || 'N/A');
             const lastName = this.sanitizeHTML(student.user?.last_name || 'N/A');
-            const classroomName = this.sanitizeHTML(student.classroom?.name || 'N/A');
+            const classroomName = this.sanitizeHTML(student.classroom?.name || 'Not assigned');
+            const isEnrolled = student.is_enrolled !== false;
             
             html += `
                 <tr>
                     <td>${studentNumber}</td>
                     <td>${firstName} ${lastName}</td>
                     <td>${classroomName}</td>
+                    <td>
+                        <span class="status-badge ${isEnrolled ? 'enrolled' : 'not-enrolled'}">
+                            ${isEnrolled ? 'Enrolled' : 'Not Enrolled'}
+                        </span>
+                    </td>
                     <td>
                         <div class="action-buttons">
                             <button class="btn-small btn-info" onclick="viewStudentDetails(${student.id})">
@@ -560,10 +608,144 @@ export class DashboardManager {
         studentsList.innerHTML = html;
     }
 
+    // FIX: Edit student with proper data handling
     async editStudent(studentId) {
-        // Implementation for editing student
-        this.showMessage(`Editing student ID: ${studentId}`, 'info');
-        // Would open edit form
+        try {
+            // Fetch student details
+            const endpointConfig = resolveEndpoint(API_CONFIG.endpoints.students.details, studentId);
+            const student = await this.authManager.apiClient.get(endpointConfig);
+            
+            // Create edit form
+            if (window.uiUtils) {
+                const editForm = this.createStudentEditForm(student);
+                window.uiUtils.showModal(editForm, 'Edit Student');
+            } else {
+                this.showMessage(`Editing student: ${student.user?.first_name} ${student.user?.last_name}`, 'info');
+            }
+        } catch (error) {
+            console.error('Error loading student for edit:', error);
+            this.showMessage('Failed to load student details: ' + error.message, 'error');
+        }
+    }
+
+    // FIX: Create student edit form with proper data types
+    createStudentEditForm(student) {
+        const classroomsOptions = this.getClassroomOptions();
+        
+        return `
+            <form id="editStudentForm" onsubmit="window.dashboardManager.submitStudentEdit(event, ${student.id})">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-first-name">First Name: <span class="required">*</span></label>
+                        <input type="text" id="edit-first-name" name="first_name" 
+                               value="${this.sanitizeHTML(student.user?.first_name || '')}" 
+                               required maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-last-name">Last Name: <span class="required">*</span></label>
+                        <input type="text" id="edit-last-name" name="last_name" 
+                               value="${this.sanitizeHTML(student.user?.last_name || '')}" 
+                               required maxlength="100">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-email">Email: <span class="required">*</span></label>
+                    <input type="email" id="edit-email" name="email" 
+                           value="${this.sanitizeHTML(student.user?.email || '')}" 
+                           required maxlength="255">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-student-number">Student Number: <span class="required">*</span></label>
+                        <input type="text" id="edit-student-number" name="student_number" 
+                               value="${this.sanitizeHTML(student.student_number || '')}" 
+                               required maxlength="20">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-classroom">Classroom:</label>
+                        <select id="edit-classroom" name="classroom_id">
+                            <option value="">Select Classroom</option>
+                            ${classroomsOptions}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-date-of-birth">Date of Birth:</label>
+                        <input type="date" id="edit-date-of-birth" name="date_of_birth" 
+                               value="${student.date_of_birth || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-phone">Phone:</label>
+                        <input type="tel" id="edit-phone" name="phone" 
+                               value="${this.sanitizeHTML(student.phone || '')}" 
+                               maxlength="20">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-address">Address:</label>
+                    <textarea id="edit-address" name="address" rows="2" 
+                              maxlength="500">${this.sanitizeHTML(student.address || '')}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" name="is_enrolled" ${student.is_enrolled ? 'checked' : ''}>
+                        Currently Enrolled
+                    </label>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn">Update Student</button>
+                    <button type="button" class="btn btn-secondary" onclick="window.uiUtils.closeModal(this.closest('.modal'))">Cancel</button>
+                </div>
+            </form>
+        `;
+    }
+
+    // FIX: Submit student edit with proper data transformation
+    async submitStudentEdit(event, studentId) {
+        event.preventDefault();
+        
+        const formData = new FormData(event.target);
+        const studentData = {};
+        
+        // Extract form data with proper types
+        studentData.first_name = formData.get('first_name')?.trim();
+        studentData.last_name = formData.get('last_name')?.trim();
+        studentData.email = formData.get('email')?.trim().toLowerCase();
+        studentData.student_number = formData.get('student_number')?.trim();
+        studentData.phone = formData.get('phone')?.trim() || null;
+        studentData.address = formData.get('address')?.trim() || null;
+        studentData.date_of_birth = formData.get('date_of_birth') || null;
+        studentData.is_enrolled = formData.has('is_enrolled');
+        
+        // Handle classroom_id as integer
+        const classroomId = formData.get('classroom_id');
+        studentData.classroom_id = classroomId ? parseInt(classroomId) : null;
+        
+        try {
+            const endpointConfig = resolveEndpoint(API_CONFIG.endpoints.students.update, studentId);
+            await this.authManager.apiClient.put(endpointConfig, studentData);
+            
+            this.showMessage('Student updated successfully!', 'success');
+            
+            // Close modal and refresh list
+            const modal = event.target.closest('.modal');
+            if (modal && window.uiUtils) {
+                window.uiUtils.closeModal(modal);
+            }
+            
+            await this.loadStudents();
+            
+        } catch (error) {
+            console.error('Error updating student:', error);
+            this.showMessage('Failed to update student: ' + error.message, 'error');
+        }
     }
 
     async deleteStudent(studentId, studentName) {
@@ -615,6 +797,7 @@ export class DashboardManager {
             }
             
             this.populateClassroomSelects(filteredClassrooms);
+            this.cachedClassrooms = filteredClassrooms; // Cache for forms
             return Array.isArray(filteredClassrooms) ? filteredClassrooms : [];
         } catch (error) {
             console.error('Error loading classrooms:', error);
@@ -654,6 +837,15 @@ export class DashboardManager {
         });
     }
 
+    // FIX: Helper method to get classroom options for forms
+    getClassroomOptions() {
+        if (!this.cachedClassrooms) return '';
+        
+        return this.cachedClassrooms.map(classroom => 
+            `<option value="${classroom.id}">${this.sanitizeHTML(classroom.name)}</option>`
+        ).join('');
+    }
+
     async loadSubjects() {
         if (!this.canAccessSubjects()) {
             console.warn('Access denied: Teacher or Admin privileges required');
@@ -667,6 +859,7 @@ export class DashboardManager {
 
             const endpoint = API_CONFIG.endpoints.admin.subjects.list;
             const subjects = await this.authManager.apiClient.get(endpoint);
+            this.cachedSubjects = subjects; // Cache for forms
             return Array.isArray(subjects) ? subjects : [];
         } catch (error) {
             console.error('Error loading subjects:', error);
@@ -859,6 +1052,30 @@ export class DashboardManager {
         
         calendarHTML += '</div>';
         calendarEl.innerHTML = calendarHTML;
+    }
+
+    // Utility methods
+    formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        } catch (error) {
+            return 'Invalid Date';
+        }
+    }
+
+    sanitizeHTML(str) {
+        if (typeof str !== 'string') return '';
+        
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
     }
 
     // Cleanup method to remove event listeners

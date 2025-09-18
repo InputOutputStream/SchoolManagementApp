@@ -1,5 +1,7 @@
 import { API_CONFIG, resolveEndpoint } from './config.js';
 
+// NOTE: Backend doesn't have attendance table in migration - this needs backend implementation
+// Creating structure that would work with a proper attendance system
 export class AttendanceManager {
     constructor(authManager) {
         this.authManager = authManager;
@@ -32,11 +34,9 @@ export class AttendanceManager {
         }
 
         try {
-            // Use the function-based endpoint config with proper resolution
             const endpointFunction = API_CONFIG.endpoints.attendance.classroomAttendance;
             const endpointConfig = resolveEndpoint(endpointFunction, classroomId);
             
-            // Add date as query parameter to the path
             const endpointWithQuery = {
                 ...endpointConfig,
                 path: `${endpointConfig.path}?date=${date}`
@@ -116,8 +116,11 @@ export class AttendanceManager {
         const errors = [];
 
         // FIX: Validate classroom_id as integer
-        if (!attendanceData.classroom_id || !Number.isInteger(attendanceData.classroom_id)) {
+        if (!attendanceData.classroom_id || !Number.isInteger(Number(attendanceData.classroom_id))) {
             errors.push('Valid classroom ID is required');
+        } else {
+            // Ensure it's actually an integer
+            attendanceData.classroom_id = parseInt(attendanceData.classroom_id);
         }
 
         // FIX: Validate date format YYYY-MM-DD
@@ -126,9 +129,9 @@ export class AttendanceManager {
         } else if (!/^\d{4}-\d{2}-\d{2}$/.test(attendanceData.date)) {
             errors.push('Date must be in YYYY-MM-DD format');
         } else {
-            const date = new Date(attendanceData.date);
+            const date = new Date(attendanceData.date + 'T00:00:00'); // Prevent timezone issues
             const today = new Date();
-            today.setHours(23, 59, 59, 999); // Allow today's date
+            today.setHours(23, 59, 59, 999);
             
             if (isNaN(date.getTime())) {
                 errors.push('Invalid date format');
@@ -144,14 +147,33 @@ export class AttendanceManager {
         } else {
             // FIX: Validate individual records more strictly
             attendanceData.attendance_records.forEach((record, index) => {
-                if (!record.student_id || !Number.isInteger(record.student_id)) {
+                if (!record.student_id || !Number.isInteger(Number(record.student_id))) {
                     errors.push(`Valid student ID is required for record ${index + 1}`);
+                } else {
+                    // Ensure it's actually an integer
+                    record.student_id = parseInt(record.student_id);
                 }
 
                 if (!record.status || !this.isValidAttendanceStatus(record.status)) {
                     errors.push(`Valid status (present, absent, late, excused) is required for record ${index + 1}`);
                 }
+
+                // FIX: Add additional validation for potential future fields
+                if (record.notes && typeof record.notes !== 'string') {
+                    errors.push(`Notes for record ${index + 1} must be a string`);
+                }
+
+                if (record.created_at && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(record.created_at)) {
+                    errors.push(`Invalid created_at format for record ${index + 1}`);
+                }
             });
+        }
+
+        // FIX: Add validation for teacher_id if provided
+        if (attendanceData.teacher_id && !Number.isInteger(Number(attendanceData.teacher_id))) {
+            errors.push('Valid teacher ID is required if provided');
+        } else if (attendanceData.teacher_id) {
+            attendanceData.teacher_id = parseInt(attendanceData.teacher_id);
         }
 
         return errors;
@@ -159,7 +181,7 @@ export class AttendanceManager {
 
     isValidAttendanceStatus(status) {
         const validStatuses = ['present', 'absent', 'late', 'excused'];
-        return validStatuses.includes(status);
+        return validStatuses.includes(status?.toLowerCase());
     }
 
     displayAttendanceList(students, attendanceData = [], classroomId, date) {
@@ -265,9 +287,11 @@ export class AttendanceManager {
             return;
         }
 
+        // FIX: Structure data to match expected backend format
         const attendanceData = {
             classroom_id: parseInt(classroomId), // FIX: Ensure integer
             date: date, // FIX: Ensure YYYY-MM-DD format
+            teacher_id: this.authManager.currentUser?.teacher?.id || null, // FIX: Add teacher context
             attendance_records: []
         };
 
@@ -279,7 +303,9 @@ export class AttendanceManager {
             if (studentId && status && this.isValidAttendanceStatus(status)) {
                 attendanceData.attendance_records.push({
                     student_id: parseInt(studentId), // FIX: Ensure integer
-                    status: status
+                    status: status.toLowerCase(), // FIX: Normalize to lowercase
+                    // FIX: Add timestamp for record keeping
+                    recorded_at: new Date().toISOString()
                 });
             }
         });
@@ -295,6 +321,13 @@ export class AttendanceManager {
             return;
         }
 
+        // FIX: Additional validation
+        const validationErrors = this.validateAttendanceData(attendanceData);
+        if (validationErrors.length > 0) {
+            this.showMessage('Validation failed: ' + validationErrors.join(', '), 'error');
+            return;
+        }
+
         try {
             const result = await this.recordAttendance(attendanceData);
             return result;
@@ -303,7 +336,6 @@ export class AttendanceManager {
             throw error;
         }
     }
-
 
     clearAttendance() {
         const attendanceItems = document.querySelectorAll('.attendance-status');
@@ -335,12 +367,18 @@ export class AttendanceManager {
             absent: 0,
             late: 0,
             excused: 0,
-            date: date
+            date: date,
+            // FIX: Add additional summary data
+            classroom_id: parseInt(classroomId),
+            generated_at: new Date().toISOString(),
+            teacher_id: this.authManager.currentUser?.teacher?.id || null
         };
 
         attendanceItems.forEach(item => {
             const status = item.value;
-            summary[status]++;
+            if (summary.hasOwnProperty(status)) {
+                summary[status]++;
+            }
         });
 
         // Calculate attendance rate (present + late as attending)
@@ -411,7 +449,10 @@ export class AttendanceManager {
             late: 0,
             excused: 0,
             attendanceRate: 0,
-            students: []
+            students: [],
+            // FIX: Add metadata for proper reporting
+            generated_at: new Date().toISOString(),
+            report_type: 'attendance_summary'
         };
 
         students.forEach(student => {
@@ -419,14 +460,19 @@ export class AttendanceManager {
             const status = attendance?.status || 'present';
             
             // Count status
-            report[status]++;
+            if (report.hasOwnProperty(status)) {
+                report[status]++;
+            }
             
-            // Add to students array
+            // Add to students array with proper data structure
             report.students.push({
                 id: student.id,
                 name: `${student.user?.first_name || 'N/A'} ${student.user?.last_name || 'N/A'}`,
                 studentNumber: student.student_number,
-                status: status
+                status: status,
+                // FIX: Add additional student context
+                classroom_id: student.classroom?.id || null,
+                user_id: student.user_id || null
             });
         });
 

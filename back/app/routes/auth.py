@@ -42,7 +42,7 @@ def login():
             return jsonify({'message': 'Account is deactivated'}), 401
         
         access_token = create_access_token(
-            identity=user.id,
+            identity=str(user.id),
             additional_claims={'email': user.email, 'role': user.role}
         )
         refresh_token = create_refresh_token(identity=user.id)

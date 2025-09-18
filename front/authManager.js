@@ -30,16 +30,15 @@ export class AuthManager {
             document.addEventListener('DOMContentLoaded', () => {
                 this.setupRoleListeners();
                 this.setupFormListeners();
-                this.setupLogoutListener(); // FIX: Add logout listener
+                this.setupLogoutListener();
             });
         } else {
             this.setupRoleListeners();
             this.setupFormListeners();
-            this.setupLogoutListener(); // FIX: Add logout listener
+            this.setupLogoutListener();
         }
     }
 
-    // FIX: Add missing logout button event listener
     setupLogoutListener() {
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
@@ -131,10 +130,8 @@ export class AuthManager {
             });
         }
 
-        // FIX: Add file upload listeners  
         this.setupFileUploadListeners();
 
-        // FIX: Add load students button listener
         const loadStudentsBtn = document.getElementById('loadStudentsBtn');
         if (loadStudentsBtn) {
             loadStudentsBtn.addEventListener('click', () => {
@@ -142,7 +139,6 @@ export class AuthManager {
             });
         }
 
-        // FIX: Add generate reports button listener
         const generateReportsBtn = document.getElementById('generateReportsBtn');
         if (generateReportsBtn) {
             generateReportsBtn.addEventListener('click', () => {
@@ -151,7 +147,6 @@ export class AuthManager {
         }
     }
 
-    // FIX: Add missing file upload event listeners
     setupFileUploadListeners() {
         // Students file upload
         const studentsFileInput = document.getElementById('studentsFileInput');
@@ -215,13 +210,11 @@ export class AuthManager {
         const email = emailInput.value.trim();
         const password = passwordInput.value;
 
-        // FIX: Better validation
         if (!email || !password) {
             this.showMessage('Please enter both email and password.', 'error');
             return;
         }
 
-        // FIX: Email format validation
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             this.showMessage('Please enter a valid email address.', 'error');
             return;
@@ -230,9 +223,8 @@ export class AuthManager {
         this.setLoading(true);
         
         try {
-            // FIX: Don't normalize email to lowercase - send as entered
             const loginData = {
-                email: email, // Don't use toLowerCase()
+                email: email,
                 password: password
             };
 
@@ -240,30 +232,27 @@ export class AuthManager {
                 'POST', 
                 API_CONFIG.endpoints.auth.login,
                 loginData,
-                false // requiresAuth = false for login
+                false
             );
             
-            // FIX: Better response validation
             if (response && response.access_token && response.user) {
                 this.token = response.access_token;
                 this.currentUser = response.user;
                 this.storeAuth(response.user, response.access_token);
                 this.showMessage('Login successful!', 'success');
                 
-                // FIX: Dispatch login event before showing dashboard
                 window.dispatchEvent(new CustomEvent('userLoggedIn', { 
                     detail: { user: this.currentUser } 
                 }));
                 
                 setTimeout(() => {
                     this.showDashboard();
-                }, 500); // Reduced delay
+                }, 500);
             } else {
                 throw new Error(response?.message || 'Invalid response from server');
             }
         } catch (error) {
             console.error('Login error:', error);
-            // FIX: Better error handling for 422 responses
             let errorMessage = 'Login failed. Please try again.';
             
             if (error.message.includes('422')) {
@@ -285,7 +274,6 @@ export class AuthManager {
     setCurrentDate() {
         const dateInputs = document.querySelectorAll('input[type="date"]');
         const today = new Date();
-        // FIX: Ensure proper YYYY-MM-DD format
         const todayStr = today.getFullYear() + '-' + 
                         String(today.getMonth() + 1).padStart(2, '0') + '-' + 
                         String(today.getDate()).padStart(2, '0');
@@ -312,18 +300,24 @@ export class AuthManager {
         const formData = new FormData(teacherForm);
         const teacherData = Object.fromEntries(formData.entries());
 
-        // FIX: Better data sanitization and validation
-        const sanitizedData = {};
-        for (const [key, value] of Object.entries(teacherData)) {
-            if (typeof value === 'string') {
-                sanitizedData[key] = value.trim() || null;
-            } else {
-                sanitizedData[key] = value;
-            }
-        }
-
-        // FIX: Handle checkbox properly
-        sanitizedData.is_head_teacher = formData.has('is_head_teacher');
+        // FIX: Properly format data to match backend schema
+        const sanitizedData = {
+            // User data (will be handled by backend to create user first)
+            first_name: teacherData.first_name?.toString().trim() || null,
+            last_name: teacherData.last_name?.toString().trim() || null,
+            email: teacherData.email?.toString().trim() || null,
+            
+            // Teacher-specific data
+            employee_number: teacherData.employee_number?.toString().trim() || null,
+            specialization: teacherData.specialization?.toString().trim() || null,
+            phone_number: teacherData.phone_number?.toString().trim() || null, // Keep as phone_number for API
+            
+            // FIX: Ensure boolean conversion
+            is_head_teacher: Boolean(formData.has('is_head_teacher')),
+            
+            // FIX: Add password if provided
+            password: teacherData.password?.toString().trim() || null
+        };
 
         const requiredFields = ['first_name', 'last_name', 'email', 'employee_number'];
         const missingFields = requiredFields.filter(field => !sanitizedData[field]);
@@ -333,9 +327,14 @@ export class AuthManager {
             return;
         }
 
-        // FIX: Email validation
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedData.email)) {
             this.showMessage('Please enter a valid email address.', 'error');
+            return;
+        }
+
+        // FIX: Validate employee_number length (backend expects max 20 chars)
+        if (sanitizedData.employee_number.length > 20) {
+            this.showMessage('Employee number must be 20 characters or less.', 'error');
             return;
         }
 
@@ -379,17 +378,14 @@ export class AuthManager {
         const classroomId = classroomSelect.value;
         const date = dateInput.value;
 
-        // FIX: Validate classroom selection
         if (!classroomId || classroomId === '') {
             return { valid: false, message: 'Please select a classroom' };
         }
 
-        // FIX: Validate classroom ID is numeric
         if (!/^\d+$/.test(classroomId)) {
             return { valid: false, message: 'Invalid classroom selection' };
         }
 
-        // FIX: Validate date format
         if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
             return { valid: false, message: 'Please select a valid date' };
         }
@@ -412,26 +408,38 @@ export class AuthManager {
         const formData = new FormData(classroomForm);
         const classroomData = Object.fromEntries(formData.entries());
 
-        // FIX: Sanitize data
-        const sanitizedData = {};
-        for (const [key, value] of Object.entries(classroomData)) {
-            if (typeof value === 'string') {
-                sanitizedData[key] = value.trim() || null;
-            } else {
-                sanitizedData[key] = value;
-            }
-        }
+        // FIX: Map frontend fields to backend schema
+        const sanitizedData = {
+            name: classroomData.name?.toString().trim() || null,
+            level: classroomData.grade_level?.toString().trim() || null, // FIX: grade_level -> level
+            description: classroomData.description?.toString().trim() || null,
+            max_students: classroomData.capacity ? parseInt(classroomData.capacity) : null, // FIX: capacity -> max_students
+            head_teacher_email: classroomData.head_teacher_email?.toString().trim() || null,
+            academic_year: new Date().getFullYear() + '-' + (new Date().getFullYear() + 1) // FIX: Add required academic_year
+        };
 
-        // Convert capacity to number if provided
-        if (sanitizedData.capacity) {
-            sanitizedData.capacity = parseInt(sanitizedData.capacity);
-        }
-
-        const requiredFields = ['name', 'grade_level'];
+        const requiredFields = ['name', 'level'];
         const missingFields = requiredFields.filter(field => !sanitizedData[field]);
         
         if (missingFields.length > 0) {
             this.showMessage(`Missing required fields: ${missingFields.join(', ')}`, 'error');
+            return;
+        }
+
+        // FIX: Validate field lengths according to backend schema
+        if (sanitizedData.name.length > 50) {
+            this.showMessage('Classroom name must be 50 characters or less.', 'error');
+            return;
+        }
+
+        if (sanitizedData.level.length > 50) {
+            this.showMessage('Grade level must be 50 characters or less.', 'error');
+            return;
+        }
+
+        // FIX: Validate max_students is positive integer
+        if (sanitizedData.max_students && sanitizedData.max_students <= 0) {
+            this.showMessage('Capacity must be a positive number.', 'error');
             return;
         }
 
@@ -475,26 +483,36 @@ export class AuthManager {
         const formData = new FormData(subjectForm);
         const subjectData = Object.fromEntries(formData.entries());
 
-        // FIX: Sanitize data
-        const sanitizedData = {};
-        for (const [key, value] of Object.entries(subjectData)) {
-            if (typeof value === 'string') {
-                sanitizedData[key] = value.trim() || null;
-            } else {
-                sanitizedData[key] = value;
-            }
-        }
-
-        // Convert coefficient to number if provided
-        if (sanitizedData.coefficient) {
-            sanitizedData.coefficient = parseFloat(sanitizedData.coefficient);
-        }
+        const sanitizedData = {
+            name: subjectData.name?.toString().trim() || null,
+            code: subjectData.code?.toString().trim() || null,
+            description: subjectData.description?.toString().trim() || null,
+            // FIX: Backend expects Integer for coefficient, not Float
+            coefficient: subjectData.coefficient ? parseInt(subjectData.coefficient) : 1
+        };
 
         const requiredFields = ['name', 'code'];
         const missingFields = requiredFields.filter(field => !sanitizedData[field]);
         
         if (missingFields.length > 0) {
             this.showMessage(`Missing required fields: ${missingFields.join(', ')}`, 'error');
+            return;
+        }
+
+        // FIX: Validate field lengths according to backend schema
+        if (sanitizedData.name.length > 100) {
+            this.showMessage('Subject name must be 100 characters or less.', 'error');
+            return;
+        }
+
+        if (sanitizedData.code.length > 20) {
+            this.showMessage('Subject code must be 20 characters or less.', 'error');
+            return;
+        }
+
+        // FIX: Validate coefficient is positive integer
+        if (sanitizedData.coefficient && sanitizedData.coefficient <= 0) {
+            this.showMessage('Coefficient must be a positive integer.', 'error');
             return;
         }
 
@@ -619,7 +637,6 @@ export class AuthManager {
         }
     }
 
-    // FIX: Improved logout function
     logout() {
         console.log('Logout initiated');
         
@@ -633,13 +650,12 @@ export class AuthManager {
             console.error('Error clearing auth data:', error);
         }
         
-        // FIX: Properly reset UI
         const authSection = document.getElementById('authSection');
         const dashboardSection = document.getElementById('dashboardSection');
         const loginForm = document.getElementById('loginForm');
         
         if (authSection) {
-            authSection.style.display = 'flex'; // FIX: Use flex instead of block
+            authSection.style.display = 'flex';
         }
         if (dashboardSection) {
             dashboardSection.classList.remove('active');
@@ -648,13 +664,11 @@ export class AuthManager {
             loginForm.reset();
         }
         
-        // FIX: Clear form inputs
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
         if (emailInput) emailInput.value = '';
         if (passwordInput) passwordInput.value = '';
         
-        // FIX: Reset role selector
         document.querySelectorAll('.role-btn').forEach(btn => {
             btn.classList.remove('active');
             btn.setAttribute('aria-checked', 'false');
@@ -684,7 +698,7 @@ export class AuthManager {
         window.dispatchEvent(new CustomEvent('dashboardInitialized'));
         
         this.updateClock();
-        this.setCurrentDate(); // FIX: Set current date on dashboard init
+        this.setCurrentDate();
         
         if (this.clockInterval) clearInterval(this.clockInterval);
         this.clockInterval = setInterval(() => this.updateClock(), 60000);

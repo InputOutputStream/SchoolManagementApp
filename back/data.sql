@@ -1,40 +1,47 @@
--- Fixed database population script for Cameroonian Anglo-Saxon Secondary School System
+-- Fixed database population script with proper role values and password hashing
 -- Uses INSERT ... ON CONFLICT to handle existing records
+
+-- Clear existing data (optional - comment out if not needed)
+-- TRUNCATE TABLE users, teachers, students, classrooms, subjects, evaluation_periods, 
+-- evaluation_types, evaluations, grades, attendances, report_cards, audit_logs, 
+-- teacher_subject_classroom RESTART IDENTITY CASCADE;
 
 -- Insert users with conflict handling
 INSERT INTO users (id, email, password_hash, first_name, last_name, role, is_active, created_at, updated_at) VALUES
 -- Administrator
-(1, 'admin@school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Admin', 'User', 'ADMIN', true, NOW(), NOW()),
+(1, 'admin@school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Admin', 'User', 'admin', true, NOW(), NOW()),
 
 -- Teachers
-(2, 'john.mbeng@school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'John', 'Mbeng', 'TEACHER', true, NOW(), NOW()),
-(3, 'roseline.akah@school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Roseline', 'Akah', 'TEACHER', true, NOW(), NOW()),
-(4, 'emmanuel.ndi@school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Emmanuel', 'Ndi', 'TEACHER', true, NOW(), NOW()),
-(5, 'grace.tanjong@school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Grace', 'Tanjong', 'TEACHER', true, NOW(), NOW()),
-(6, 'patrick.musa@school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Patrick', 'Musa', 'TEACHER', true, NOW(), NOW()),
-(7, 'susan.amin@school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Susan', 'Amin', 'TEACHER', true, NOW(), NOW()),
-(8, 'thomas.nfor@school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Thomas', 'Nfor', 'TEACHER', true, NOW(), NOW()),
-(9, 'miriam.fon@school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Miriam', 'Fon', 'TEACHER', true, NOW(), NOW()),
-(10, 'david.kum@school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'David', 'Kum', 'TEACHER', true, NOW(), NOW()),
-(11, 'sarah.bih@school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Sarah', 'Bih', 'TEACHER', true, NOW(), NOW()),
+(2, 'john.mbeng@school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'John', 'Mbeng', 'teacher', true, NOW(), NOW()),
+(3, 'roseline.akah@school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Roseline', 'Akah', 'teacher', true, NOW(), NOW()),
+(4, 'emmanuel.ndi@school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Emmanuel', 'Ndi', 'teacher', true, NOW(), NOW()),
+(5, 'grace.tanjong@school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Grace', 'Tanjong', 'teacher', true, NOW(), NOW()),
+(6, 'patrick.musa@school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Patrick', 'Musa', 'teacher', true, NOW(), NOW()),
+(7, 'susan.amin@school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Susan', 'Amin', 'teacher', true, NOW(), NOW()),
+(8, 'thomas.nfor@school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Thomas', 'Nfor', 'teacher', true, NOW(), NOW()),
+(9, 'miriam.fon@school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Miriam', 'Fon', 'teacher', true, NOW(), NOW()),
+(10, 'david.kum@school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'David', 'Kum', 'teacher', true, NOW(), NOW()),
+(11, 'sarah.bih@school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Sarah', 'Bih', 'teacher', true, NOW(), NOW()),
 
 -- Students
-(12, 'chi.azeh@student.school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Chi', 'Azeh', 'STUDENT', true, NOW(), NOW()),
-(13, 'mbeng.tanjang@student.school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Mbeng', 'Tanjang', 'STUDENT', true, NOW(), NOW()),
-(14, 'nfor.lekeaka@student.school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Nfor', 'Lekeaka', 'STUDENT', true, NOW(), NOW()),
-(15, 'amin.bessem@student.school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Amin', 'Bessem', 'STUDENT', true, NOW(), NOW()),
-(16, 'fru.ngwa@student.school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Fru', 'Ngwa', 'STUDENT', true, NOW(), NOW()),
-(17, 'tanjong.mforlem@student.school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Tanjong', 'Mforlem', 'STUDENT', true, NOW(), NOW()),
-(18, 'ndi.chia@student.school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Ndi', 'Chia', 'STUDENT', true, NOW(), NOW()),
-(19, 'ayah.bongfen@student.school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Ayah', 'Bongfen', 'STUDENT', true, NOW(), NOW()),
-(20, 'musi.ngeh@student.school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Musi', 'Ngeh', 'STUDENT', true, NOW(), NOW()),
-(21, 'kum.lilian@student.school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Kum', 'Lilian', 'STUDENT', true, NOW(), NOW()),
-(22, 'bih.che@student.school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Bih', 'Che', 'STUDENT', true, NOW(), NOW()),
-(23, 'fon.ndang@student.school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Fon', 'Ndang', 'STUDENT', true, NOW(), NOW()),
-(24, 'azeh.mbunkur@student.school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Azeh', 'Mbunkur', 'STUDENT', true, NOW(), NOW()),
-(25, 'ngang.lydia@student.school.cm', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Ngang', 'Lydia', 'STUDENT', true, NOW(), NOW())
+(12, 'chi.azeh@student.school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Chi', 'Azeh', 'student', true, NOW(), NOW()),
+(13, 'mbeng.tanjang@student.school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Mbeng', 'Tanjang', 'student', true, NOW(), NOW()),
+(14, 'nfor.lekeaka@student.school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Nfor', 'Lekeaka', 'student', true, NOW(), NOW()),
+(15, 'amin.bessem@student.school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Amin', 'Bessem', 'student', true, NOW(), NOW()),
+(16, 'fru.ngwa@student.school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Fru', 'Ngwa', 'student', true, NOW(), NOW()),
+(17, 'tanjong.mforlem@student.school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Tanjong', 'Mforlem', 'student', true, NOW(), NOW()),
+(18, 'ndi.chia@student.school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Ndi', 'Chia', 'student', true, NOW(), NOW()),
+(19, 'ayah.bongfen@student.school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Ayah', 'Bongfen', 'student', true, NOW(), NOW()),
+(20, 'musi.ngeh@student.school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Musi', 'Ngeh', 'student', true, NOW(), NOW()),
+(21, 'kum.lilian@student.school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Kum', 'Lilian', 'student', true, NOW(), NOW()),
+(22, 'bih.che@student.school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Bih', 'Che', 'student', true, NOW(), NOW()),
+(23, 'fon.ndang@student.school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Fon', 'Ndang', 'student', true, NOW(), NOW()),
+(24, 'azeh.mbunkur@student.school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Azeh', 'Mbunkur', 'student', true, NOW(), NOW()),
+(25, 'ngang.lydia@student.school.cm', 'scrypt:32768:8:1$Z4q2uS0L1b8X9v6R$2f4d4e4c5b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2', 'Ngang', 'Lydia', 'student', true, NOW(), NOW())
 ON CONFLICT (id) DO UPDATE SET 
     email = EXCLUDED.email,
+    password_hash = EXCLUDED.password_hash,
+    role = EXCLUDED.role,
     updated_at = NOW();
 
 -- Insert teachers

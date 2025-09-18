@@ -12,8 +12,9 @@ def role_required(*allowed_roles):
             try:
                 verify_jwt_in_request()
                 current_user_id = get_jwt_identity()
-                user = User.query.get(current_user_id)
-                
+                # user = User.query.get(current_user_id)
+                user = User.query.get(int(current_user_id))
+
                 if not user or not user.is_active:
                     return jsonify({'message': 'Invalid or inactive user'}), 401
                 
