@@ -810,7 +810,7 @@ export class DashboardManager {
     populateClassroomSelects(classrooms) {
         const selects = [
             'attendanceClassroom',
-            'studentsClassroom', 
+            'studentsClassroomFilter', 
             'reportClassroom'
         ];
 

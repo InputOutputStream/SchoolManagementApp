@@ -106,6 +106,7 @@ export class AuthManager {
             });
         }
 
+        // Updated form IDs to match new HTML structure
         const teacherForm = document.getElementById('teacherForm');
         if (teacherForm) {
             teacherForm.addEventListener('submit', (e) => {
@@ -130,25 +131,66 @@ export class AuthManager {
             });
         }
 
+        const evaluationForm = document.getElementById('evaluationForm');
+        if (evaluationForm) {
+            evaluationForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleCreateEvaluation();
+            });
+        }
+
+        const assignmentForm = document.getElementById('assignmentForm');
+        if (assignmentForm) {
+            assignmentForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleCreateAssignment();
+            });
+        }
+
+        // Updated form handlers for new structure
+        const studentForm = document.getElementById('studentForm');
+        if (studentForm) {
+            studentForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleCreateStudent();
+            });
+        }
+
+        const gradeEntryForm = document.getElementById('gradeEntryForm');
+        if (gradeEntryForm) {
+            gradeEntryForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleGradeEntry();
+            });
+        }
+
         this.setupFileUploadListeners();
 
-        const loadStudentsBtn = document.getElementById('loadStudentsBtn');
+        // Updated button IDs for new structure
+        const loadStudentsBtn = document.getElementById('loadStudentsForAttendanceBtn');
         if (loadStudentsBtn) {
             loadStudentsBtn.addEventListener('click', () => {
-                window.loadClassroomForAttendance();
+                window.app.loadStudentsForAttendance();
+            });
+        }
+
+        const loadTeachersBtn = document.getElementById('loadTeachersAttendanceBtn');
+        if (loadTeachersBtn) {
+            loadTeachersBtn.addEventListener('click', () => {
+                window.app.loadTeachersAttendance();
             });
         }
 
         const generateReportsBtn = document.getElementById('generateReportsBtn');
         if (generateReportsBtn) {
             generateReportsBtn.addEventListener('click', () => {
-                window.generateReports();
+                window.app.generateReports();
             });
         }
     }
 
     setupFileUploadListeners() {
-        // Students file upload
+        // Updated file input IDs to match new HTML structure
         const studentsFileInput = document.getElementById('studentsFileInput');
         if (studentsFileInput) {
             studentsFileInput.addEventListener('change', (e) => {
@@ -156,7 +198,6 @@ export class AuthManager {
             });
         }
 
-        // Teachers file upload
         const teachersFileInput = document.getElementById('teachersFileInput');
         if (teachersFileInput) {
             teachersFileInput.addEventListener('change', (e) => {
@@ -164,7 +205,6 @@ export class AuthManager {
             });
         }
 
-        // Classrooms file upload
         const classroomsFileInput = document.getElementById('classroomsFileInput');
         if (classroomsFileInput) {
             classroomsFileInput.addEventListener('change', (e) => {
@@ -172,7 +212,6 @@ export class AuthManager {
             });
         }
 
-        // Subjects file upload
         const subjectsFileInput = document.getElementById('subjectsFileInput');
         if (subjectsFileInput) {
             subjectsFileInput.addEventListener('change', (e) => {
@@ -180,7 +219,7 @@ export class AuthManager {
             });
         }
 
-        // Download template buttons
+        // Updated template download button IDs
         const downloadButtons = [
             { id: 'downloadStudentsTemplate', type: 'students' },
             { id: 'downloadTeachersTemplate', type: 'teachers' },
@@ -271,20 +310,6 @@ export class AuthManager {
         }
     }
 
-    setCurrentDate() {
-        const dateInputs = document.querySelectorAll('input[type="date"]');
-        const today = new Date();
-        const todayStr = today.getFullYear() + '-' + 
-                        String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-                        String(today.getDate()).padStart(2, '0');
-        
-        dateInputs.forEach(input => {
-            if (!input.value) {
-                input.value = todayStr;
-            }
-        });
-    }
-
     async handleCreateTeacher() {
         if (!this.currentUser || this.currentUser.role !== 'admin') {
             this.showMessage('Access denied. Admin privileges required.', 'error');
@@ -300,22 +325,15 @@ export class AuthManager {
         const formData = new FormData(teacherForm);
         const teacherData = Object.fromEntries(formData.entries());
 
-        // FIX: Properly format data to match backend schema
+        // Updated field names to match new HTML structure
         const sanitizedData = {
-            // User data (will be handled by backend to create user first)
             first_name: teacherData.first_name?.toString().trim() || null,
             last_name: teacherData.last_name?.toString().trim() || null,
             email: teacherData.email?.toString().trim() || null,
-            
-            // Teacher-specific data
             employee_number: teacherData.employee_number?.toString().trim() || null,
             specialization: teacherData.specialization?.toString().trim() || null,
-            phone_number: teacherData.phone_number?.toString().trim() || null, // Keep as phone_number for API
-            
-            // FIX: Ensure boolean conversion
+            phone_number: teacherData.phone_number?.toString().trim() || null,
             is_head_teacher: Boolean(formData.has('is_head_teacher')),
-            
-            // FIX: Add password if provided
             password: teacherData.password?.toString().trim() || null
         };
 
@@ -332,7 +350,6 @@ export class AuthManager {
             return;
         }
 
-        // FIX: Validate employee_number length (backend expects max 20 chars)
         if (sanitizedData.employee_number.length > 20) {
             this.showMessage('Employee number must be 20 characters or less.', 'error');
             return;
@@ -367,30 +384,33 @@ export class AuthManager {
         }
     }
 
-    validateClassroomSelection() {
-        const classroomSelect = document.getElementById('attendanceClassroom');
-        const dateInput = document.getElementById('attendanceDate');
-        
-        if (!classroomSelect || !dateInput) {
-            return { valid: false, message: 'Required form elements not found' };
+    async handleCreateStudent() {
+        const studentForm = document.getElementById('studentForm');
+        if (!studentForm) {
+            this.showMessage('Student form not found.', 'error');
+            return;
         }
 
-        const classroomId = classroomSelect.value;
-        const date = dateInput.value;
+        const formData = new FormData(studentForm);
+        const studentData = Object.fromEntries(formData.entries());
 
-        if (!classroomId || classroomId === '') {
-            return { valid: false, message: 'Please select a classroom' };
+        try {
+            if (window.studentManager) {
+                await window.studentManager.registerStudent(studentData);
+                studentForm.reset();
+                this.showMessage('Student created successfully!', 'success');
+                
+                // Refresh students list
+                if (window.dashboardManager) {
+                    await window.dashboardManager.loadStudents();
+                }
+            } else {
+                throw new Error('Student manager not initialized');
+            }
+        } catch (error) {
+            console.error('Error creating student:', error);
+            this.showMessage('Failed to create student: ' + error.message, 'error');
         }
-
-        if (!/^\d+$/.test(classroomId)) {
-            return { valid: false, message: 'Invalid classroom selection' };
-        }
-
-        if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-            return { valid: false, message: 'Please select a valid date' };
-        }
-
-        return { valid: true, classroomId: parseInt(classroomId), date };
     }
 
     async handleCreateClassroom() {
@@ -408,14 +428,13 @@ export class AuthManager {
         const formData = new FormData(classroomForm);
         const classroomData = Object.fromEntries(formData.entries());
 
-        // FIX: Map frontend fields to backend schema
         const sanitizedData = {
             name: classroomData.name?.toString().trim() || null,
-            level: classroomData.grade_level?.toString().trim() || null, // FIX: grade_level -> level
+            level: classroomData.grade_level?.toString().trim() || null,
             description: classroomData.description?.toString().trim() || null,
-            max_students: classroomData.capacity ? parseInt(classroomData.capacity) : null, // FIX: capacity -> max_students
+            max_students: classroomData.capacity ? parseInt(classroomData.capacity) : null,
             head_teacher_email: classroomData.head_teacher_email?.toString().trim() || null,
-            academic_year: new Date().getFullYear() + '-' + (new Date().getFullYear() + 1) // FIX: Add required academic_year
+            academic_year: new Date().getFullYear() + '-' + (new Date().getFullYear() + 1)
         };
 
         const requiredFields = ['name', 'level'];
@@ -426,7 +445,6 @@ export class AuthManager {
             return;
         }
 
-        // FIX: Validate field lengths according to backend schema
         if (sanitizedData.name.length > 50) {
             this.showMessage('Classroom name must be 50 characters or less.', 'error');
             return;
@@ -437,7 +455,6 @@ export class AuthManager {
             return;
         }
 
-        // FIX: Validate max_students is positive integer
         if (sanitizedData.max_students && sanitizedData.max_students <= 0) {
             this.showMessage('Capacity must be a positive number.', 'error');
             return;
@@ -487,7 +504,6 @@ export class AuthManager {
             name: subjectData.name?.toString().trim() || null,
             code: subjectData.code?.toString().trim() || null,
             description: subjectData.description?.toString().trim() || null,
-            // FIX: Backend expects Integer for coefficient, not Float
             coefficient: subjectData.coefficient ? parseInt(subjectData.coefficient) : 1
         };
 
@@ -499,7 +515,6 @@ export class AuthManager {
             return;
         }
 
-        // FIX: Validate field lengths according to backend schema
         if (sanitizedData.name.length > 100) {
             this.showMessage('Subject name must be 100 characters or less.', 'error');
             return;
@@ -510,7 +525,6 @@ export class AuthManager {
             return;
         }
 
-        // FIX: Validate coefficient is positive integer
         if (sanitizedData.coefficient && sanitizedData.coefficient <= 0) {
             this.showMessage('Coefficient must be a positive integer.', 'error');
             return;
@@ -541,6 +555,136 @@ export class AuthManager {
         }
     }
 
+    async handleCreateEvaluation() {
+        const evaluationForm = document.getElementById('evaluationForm');
+        if (!evaluationForm) {
+            this.showMessage('Evaluation form not found.', 'error');
+            return;
+        }
+
+        const formData = new FormData(evaluationForm);
+        const evaluationData = Object.fromEntries(formData.entries());
+
+        const sanitizedData = {
+            name: evaluationData.name?.toString().trim() || null,
+            type: evaluationData.type?.toString().trim() || null,
+            subject_id: evaluationData.subject_id ? parseInt(evaluationData.subject_id) : null,
+            classroom_id: evaluationData.classroom_id ? parseInt(evaluationData.classroom_id) : null,
+            evaluation_date: evaluationData.evaluation_date || new Date().toISOString().split('T')[0],
+            max_points: evaluationData.max_points ? parseFloat(evaluationData.max_points) : 20,
+            weight: evaluationData.weight ? parseFloat(evaluationData.weight) : 1.0,
+            description: evaluationData.description?.toString().trim() || null
+        };
+
+        const requiredFields = ['name', 'type', 'subject_id', 'classroom_id'];
+        const missingFields = requiredFields.filter(field => !sanitizedData[field]);
+        
+        if (missingFields.length > 0) {
+            this.showMessage(`Missing required fields: ${missingFields.join(', ')}`, 'error');
+            return;
+        }
+
+        try {
+            const response = await this.apiClient.call('POST', '/evaluations', sanitizedData);
+            
+            if (response && (response.message || response.id)) {
+                this.showMessage('Evaluation created successfully!', 'success');
+                evaluationForm.reset();
+                
+                window.dispatchEvent(new CustomEvent('evaluationCreated', { detail: response }));
+            } else {
+                this.showMessage('Evaluation creation failed - invalid response', 'error');
+            }
+        } catch (error) {
+            console.error('Create evaluation error:', error);
+            this.showMessage('Failed to create evaluation: ' + error.message, 'error');
+        }
+    }
+
+    async handleCreateAssignment() {
+        if (!this.currentUser || this.currentUser.role !== 'admin') {
+            this.showMessage('Access denied. Admin privileges required.', 'error');
+            return;
+        }
+
+        const assignmentForm = document.getElementById('assignmentForm');
+        if (!assignmentForm) {
+            this.showMessage('Assignment form not found.', 'error');
+            return;
+        }
+
+        const formData = new FormData(assignmentForm);
+        const assignmentData = Object.fromEntries(formData.entries());
+
+        const sanitizedData = {
+            teacher_id: assignmentData.teacher_id ? parseInt(assignmentData.teacher_id) : null,
+            subject_id: assignmentData.subject_id ? parseInt(assignmentData.subject_id) : null,
+            classroom_id: assignmentData.classroom_id ? parseInt(assignmentData.classroom_id) : null,
+            academic_year: assignmentData.academic_year?.toString().trim() || null
+        };
+
+        const requiredFields = ['teacher_id', 'subject_id', 'classroom_id'];
+        const missingFields = requiredFields.filter(field => !sanitizedData[field]);
+        
+        if (missingFields.length > 0) {
+            this.showMessage(`Missing required fields: ${missingFields.join(', ')}`, 'error');
+            return;
+        }
+
+        try {
+            const response = await this.apiClient.call('POST', '/admin/assignments', sanitizedData);
+            
+            if (response && (response.message || response.id)) {
+                this.showMessage('Assignment created successfully!', 'success');
+                assignmentForm.reset();
+                
+                window.dispatchEvent(new CustomEvent('assignmentCreated', { detail: response }));
+            } else {
+                this.showMessage('Assignment creation failed - invalid response', 'error');
+            }
+        } catch (error) {
+            console.error('Create assignment error:', error);
+            this.showMessage('Failed to create assignment: ' + error.message, 'error');
+        }
+    }
+
+    async handleGradeEntry() {
+        const gradeEntryForm = document.getElementById('gradeEntryForm');
+        if (!gradeEntryForm) {
+            this.showMessage('Grade entry form not found.', 'error');
+            return;
+        }
+
+        const formData = new FormData(gradeEntryForm);
+        const gradeData = Object.fromEntries(formData.entries());
+
+        try {
+            if (window.gradesReportsManager) {
+                await window.gradesReportsManager.addGrade(gradeData);
+                gradeEntryForm.reset();
+            } else {
+                throw new Error('Grades manager not initialized');
+            }
+        } catch (error) {
+            console.error('Error adding grade:', error);
+            this.showMessage('Failed to add grade: ' + error.message, 'error');
+        }
+    }
+
+    setCurrentDate() {
+        const dateInputs = document.querySelectorAll('input[type="date"]');
+        const today = new Date();
+        const todayStr = today.getFullYear() + '-' + 
+                        String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                        String(today.getDate()).padStart(2, '0');
+        
+        dateInputs.forEach(input => {
+            if (!input.value) {
+                input.value = todayStr;
+            }
+        });
+    }
+
     showDashboard() {
         const authSection = document.getElementById('authSection');
         const dashboardSection = document.getElementById('dashboardSection');
@@ -566,13 +710,11 @@ export class AuthManager {
             
             // Show admin-only features
             if (this.currentUser.role === 'admin') {
-                const teachersLink = document.getElementById('teachersLink');
-                const classroomsManagement = document.getElementById('classroomsManagement');
-                const subjectsManagement = document.getElementById('subjectsManagement');
-                
-                if (teachersLink) teachersLink.classList.remove('hidden');
-                if (classroomsManagement) classroomsManagement.style.display = 'block';
-                if (subjectsManagement) subjectsManagement.style.display = 'block';
+                const adminElements = document.querySelectorAll('.admin-only');
+                adminElements.forEach(element => {
+                    element.classList.remove('hidden');
+                    element.style.display = 'block';
+                });
             }
 
             // Update user info displays
@@ -640,7 +782,6 @@ export class AuthManager {
     logout() {
         console.log('Logout initiated');
         
-        // Clear user data
         this.currentUser = null;
         this.token = null;
         
@@ -682,13 +823,11 @@ export class AuthManager {
         
         this.showMessage('Logged out successfully', 'success');
         
-        // Clear clock interval
         if (this.clockInterval) {
             clearInterval(this.clockInterval);
             this.clockInterval = null;
         }
 
-        // Dispatch logout event
         window.dispatchEvent(new CustomEvent('userLoggedOut'));
         
         console.log('Logout completed');

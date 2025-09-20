@@ -85,9 +85,9 @@
                     <input
                         type="text"
                         class="search"
-                        placeholder="Search Student ID"
+                        placeholder="Search Student ID or Name"
                         id="searchInput"
-                        aria-label="Search for student by ID"
+                        aria-label="Search for student by ID or name"
                     />
                 </div>
                 <div class="user-info">
@@ -108,21 +108,38 @@
             <div class="main-layout">
                 <nav class="sidebar" role="navigation" aria-label="Main navigation">
                     <ul role="list">
+                        <!-- Always Visible -->
                         <li><a href="#" class="nav-link active" data-section="dashboard" role="menuitem">
                             <i class="fas fa-tachometer-alt" aria-hidden="true"></i> Dashboard
                         </a></li>
-                        <li><a href="#" class="nav-link" data-section="attendance" role="menuitem">
-                            <i class="fas fa-clipboard-check" aria-hidden="true"></i> Take Attendance
+                        
+                        <!-- Teacher Management (Admin Only) -->
+                        <li class="admin-only hidden"><a href="#" class="nav-link" data-section="teachers" role="menuitem">
+                            <i class="fas fa-chalkboard-teacher" aria-hidden="true"></i> Teachers
                         </a></li>
+                        
+                        <!-- Student Management (Admin & Teachers) -->
                         <li><a href="#" class="nav-link" data-section="students" role="menuitem">
-                            <i class="fas fa-users" aria-hidden="true"></i> Students List
+                            <i class="fas fa-users" aria-hidden="true"></i> Students
+                        </a></li>
+                        
+                        <!-- Attendance Management -->
+                        <li><a href="#" class="nav-link" data-section="teachers-attendance" role="menuitem">
+                            <i class="fas fa-user-check" aria-hidden="true"></i> Teacher Attendance
+                        </a></li>
+                        <li><a href="#" class="nav-link" data-section="students-attendance" role="menuitem">
+                            <i class="fas fa-clipboard-check" aria-hidden="true"></i> Student Attendance
+                        </a></li>
+                        
+                        <!-- Academic Management -->
+                        <li><a href="#" class="nav-link" data-section="evaluations" role="menuitem">
+                            <i class="fas fa-tasks" aria-hidden="true"></i> Evaluations
                         </a></li>
                         <li><a href="#" class="nav-link" data-section="reports" role="menuitem">
                             <i class="fas fa-chart-bar" aria-hidden="true"></i> Reports
                         </a></li>
-                        <li><a href="#" class="nav-link hidden" data-section="teachers" id="teachersLink" role="menuitem">
-                            <i class="fas fa-user-plus" aria-hidden="true"></i> Add Teachers
-                        </a></li>
+                        
+                        <!-- Settings -->
                         <li><a href="#" class="nav-link" data-section="settings" role="menuitem">
                             <i class="fas fa-cog" aria-hidden="true"></i> Settings
                         </a></li>
@@ -130,7 +147,7 @@
                 </nav>
 
                 <main class="main-content" role="main">
-                    <!-- Dashboard Section -->
+                    <!-- 1. DASHBOARD SECTION -->
                     <div id="dashboardContent" class="content-section">
                         <div class="stats-grid" role="region" aria-label="School statistics">
                             <div class="stat-card">
@@ -180,114 +197,19 @@
                                 </div>
                             </div>
                         </section>
-
-                        <section class="gallery" aria-label="School gallery">
-                            <img
-                                src="https://placehold.co/120x120/4f46e5/ffffff?text=Gallery1"
-                                alt="School gallery image 1"
-                                loading="lazy"
-                            />
-                            <img
-                                src="https://placehold.co/120x120/4f46e5/ffffff?text=Gallery2"
-                                alt="School gallery image 2"
-                                loading="lazy"
-                            />
-                            <img
-                                src="https://placehold.co/120x120/4f46e5/ffffff?text=Gallery3"
-                                alt="School gallery image 3"
-                                loading="lazy"
-                            />
-                        </section>
                     </div>
 
-                    <!-- Attendance Section -->
-                    <div id="attendanceContent" class="content-section hidden">
-                        <div class="full-width">
-                            <section class="card" aria-labelledby="attendance-management-title">
-                                <h2 id="attendance-management-title"><i class="fas fa-clipboard-check" aria-hidden="true"></i> Attendance Management</h2>
-                                <form id="attendanceForm" novalidate>
-                                    <div class="form-group">
-                                        <label for="attendanceDate">Date</label>
-                                        <input 
-                                            type="date" 
-                                            id="attendanceDate" 
-                                            class="form-control" 
-                                            required
-                                            aria-describedby="attendance-date-error"
-                                        />
-                                        <div id="attendance-date-error" class="error-message" role="alert" aria-live="polite"></div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="attendanceClassroom">Classroom</label>
-                                        <select 
-                                            id="attendanceClassroom" 
-                                            class="form-control" 
-                                            required
-                                            aria-describedby="attendance-classroom-error"
-                                        >
-                                            <option value="">Select Classroom</option>
-                                        </select>
-                                        <div id="attendance-classroom-error" class="error-message" role="alert" aria-live="polite"></div>
-                                    </div>
-                                    <button type="button" class="btn" id="loadStudentsBtn">
-                                        <i class="fas fa-users" aria-hidden="true"></i> Load Students
-                                    </button>
-                                </form>
-                                
-                                <div id="attendanceStudentsList" class="students-list" role="region" aria-label="Students attendance list" aria-live="polite"></div>
-                            </section>
-                        </div>
-                    </div>
-
-                    <!-- Students Section -->
-                    <div id="studentsContent" class="content-section hidden">
-                        <div class="full-width">
-                            <section class="card" aria-labelledby="students-management-title">
-                                <h2 id="students-management-title"><i class="fas fa-users" aria-hidden="true"></i> Students Management</h2>
-                                
-                                <!-- Import Section -->
-                                <div class="import-section" role="region" aria-labelledby="import-students-title">
-                                    <h3 id="import-students-title" class="sr-only">Import Students</h3>
-                                    <div class="import-controls">
-                                        <button class="btn btn-secondary" id="downloadStudentsTemplate">
-                                            <i class="fas fa-download" aria-hidden="true"></i> Download Template
-                                        </button>
-                                        <label class="btn file-upload-btn">
-                                            <i class="fas fa-upload" aria-hidden="true"></i> Import Students
-                                            <input 
-                                                type="file" 
-                                                accept=".csv,.xlsx,.xls" 
-                                                id="studentsFileInput" 
-                                                class="file-input"
-                                                aria-describedby="students-import-help"
-                                            >
-                                        </label>
-                                    </div>
-                                    <p class="import-help" id="students-import-help">
-                                        <i class="fas fa-info-circle" aria-hidden="true"></i> 
-                                        Upload CSV or Excel file with columns: first_name, last_name, email, student_number, date_of_birth, phone_number, address, classroom_name
-                                    </p>
-                                </div>
-                                
-                                <!-- Filter Section -->
-                                <div class="form-group">
-                                    <label for="studentsClassroom">Filter by Classroom</label>
-                                    <select id="studentsClassroom" class="form-control">
-                                        <option value="all">All Classrooms</option>
-                                    </select>
-                                </div>
-                                <div id="studentsList" class="students-list" role="region" aria-label="Students list" aria-live="polite"></div>
-                            </section>
-                        </div>
-                    </div>
-
-                    <!-- Teachers Section (Admin only) -->
+                    <!-- 2. TEACHERS MANAGEMENT SECTION (Admin Only) -->
                     <div id="teachersContent" class="content-section hidden">
                         <div class="full-width">
-                            <!-- Import Section -->
-                            <section class="card" aria-labelledby="import-teachers-title">
-                                <h2 id="import-teachers-title"><i class="fas fa-file-import" aria-hidden="true"></i> Import Teachers</h2>
-                                <div class="import-section">
+                            <section class="card" aria-labelledby="teachers-management-title">
+                                <h2 id="teachers-management-title">
+                                    <i class="fas fa-chalkboard-teacher" aria-hidden="true"></i> Teachers Management
+                                </h2>
+                                
+                                <!-- Teachers Import -->
+                                <div class="import-section" role="region" aria-labelledby="import-teachers-title">
+                                    <h3 id="import-teachers-title">Import Teachers</h3>
                                     <div class="import-controls">
                                         <button class="btn btn-secondary" id="downloadTeachersTemplate">
                                             <i class="fas fa-download" aria-hidden="true"></i> Download Template
@@ -308,207 +230,713 @@
                                         Upload CSV or Excel file with columns: first_name, last_name, email, employee_number, specialization, phone_number, is_head_teacher
                                     </p>
                                 </div>
-                            </section>
 
-                            <!-- Manual Add Form -->
-                            <section class="teacher-form" aria-labelledby="add-teacher-title">
-                                <h2 id="add-teacher-title"><i class="fas fa-user-plus" aria-hidden="true"></i> Add New Teacher</h2>
-                                <form id="teacherForm" novalidate>
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="teacher-first-name">First Name</label>
-                                            <input 
-                                                type="text" 
-                                                id="teacher-first-name"
-                                                name="first_name" 
-                                                class="form-control" 
-                                                required 
-                                                aria-describedby="teacher-first-name-error"
-                                                autocomplete="given-name"
-                                            />
-                                            <div id="teacher-first-name-error" class="error-message" role="alert" aria-live="polite"></div>
+                                <!-- Add Teacher Form -->
+                                <div class="form-section">
+                                    <h3>Add New Teacher</h3>
+                                    <form id="teacherForm" novalidate>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="teacher-first-name">First Name <span class="required">*</span></label>
+                                                <input 
+                                                    type="text" 
+                                                    id="teacher-first-name"
+                                                    name="first_name" 
+                                                    class="form-control" 
+                                                    required 
+                                                    maxlength="100"
+                                                />
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="teacher-last-name">Last Name <span class="required">*</span></label>
+                                                <input 
+                                                    type="text" 
+                                                    id="teacher-last-name"
+                                                    name="last_name" 
+                                                    class="form-control" 
+                                                    required 
+                                                    maxlength="100"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="teacher-email">Email <span class="required">*</span></label>
+                                                <input 
+                                                    type="email" 
+                                                    id="teacher-email"
+                                                    name="email" 
+                                                    class="form-control" 
+                                                    required 
+                                                    maxlength="255"
+                                                />
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="teacher-employee-number">Employee Number <span class="required">*</span></label>
+                                                <input 
+                                                    type="text" 
+                                                    id="teacher-employee-number"
+                                                    name="employee_number" 
+                                                    class="form-control" 
+                                                    required 
+                                                    maxlength="20"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="teacher-specialization">Specialization</label>
+                                                <input 
+                                                    type="text" 
+                                                    id="teacher-specialization"
+                                                    name="specialization" 
+                                                    class="form-control" 
+                                                    maxlength="100"
+                                                />
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="teacher-phone">Phone Number</label>
+                                                <input 
+                                                    type="tel" 
+                                                    id="teacher-phone"
+                                                    name="phone_number" 
+                                                    class="form-control" 
+                                                    maxlength="20"
+                                                />
+                                            </div>
                                         </div>
                                         <div class="form-group">
-                                            <label for="teacher-last-name">Last Name</label>
-                                            <input 
-                                                type="text" 
-                                                id="teacher-last-name"
-                                                name="last_name" 
-                                                class="form-control" 
-                                                required 
-                                                aria-describedby="teacher-last-name-error"
-                                                autocomplete="family-name"
-                                            />
-                                            <div id="teacher-last-name-error" class="error-message" role="alert" aria-live="polite"></div>
-                                        </div>
-                                    </div>
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="teacher-email">Email</label>
-                                            <input 
-                                                type="email" 
-                                                id="teacher-email"
-                                                name="email" 
-                                                class="form-control" 
-                                                required 
-                                                aria-describedby="teacher-email-error"
-                                                autocomplete="email"
-                                            />
-                                            <div id="teacher-email-error" class="error-message" role="alert" aria-live="polite"></div>
+                                            <label>
+                                                <input type="checkbox" name="is_head_teacher" value="true">
+                                                Head Teacher
+                                            </label>
                                         </div>
                                         <div class="form-group">
-                                            <label for="teacher-employee-number">Employee Number</label>
+                                            <label for="teacher-password">Temporary Password</label>
                                             <input 
-                                                type="text" 
-                                                id="teacher-employee-number"
-                                                name="employee_number" 
+                                                type="password" 
+                                                id="teacher-password"
+                                                name="password" 
                                                 class="form-control" 
-                                                required 
-                                                aria-describedby="teacher-employee-number-error"
+                                                placeholder="Leave empty to auto-generate"
                                             />
-                                            <div id="teacher-employee-number-error" class="error-message" role="alert" aria-live="polite"></div>
                                         </div>
-                                    </div>
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="teacher-specialization">Specialization</label>
-                                            <input 
-                                                type="text" 
-                                                id="teacher-specialization"
-                                                name="specialization" 
-                                                class="form-control" 
-                                                aria-describedby="teacher-specialization-error"
-                                            />
-                                            <div id="teacher-specialization-error" class="error-message" role="alert" aria-live="polite"></div>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="teacher-phone">Phone Number</label>
-                                            <input 
-                                                type="tel" 
-                                                id="teacher-phone"
-                                                name="phone_number" 
-                                                class="form-control" 
-                                                aria-describedby="teacher-phone-error"
-                                                autocomplete="tel"
-                                            />
-                                            <div id="teacher-phone-error" class="error-message" role="alert" aria-live="polite"></div>
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>
-                                            <input type="checkbox" id="teacher-is-head" name="is_head_teacher" value="true">
-                                            Head Teacher
-                                        </label>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="teacher-password">Temporary Password</label>
-                                        <input 
-                                            type="password" 
-                                            id="teacher-password"
-                                            name="password" 
-                                            class="form-control" 
-                                            placeholder="Leave empty to auto-generate" 
-                                            aria-describedby="teacher-password-help teacher-password-error"
-                                            autocomplete="new-password"
-                                        />
-                                        <div id="teacher-password-help" class="form-help">Leave empty to auto-generate a secure password</div>
-                                        <div id="teacher-password-error" class="error-message" role="alert" aria-live="polite"></div>
-                                    </div>
-                                    <button type="submit" class="btn">
-                                        <i class="fas fa-user-plus" aria-hidden="true"></i> Add Teacher
-                                    </button>
-                                </form>
-                            </section>
-                            
-                            <section class="card" aria-labelledby="teachers-list-title">
-                                <h2 id="teachers-list-title"><i class="fas fa-chalkboard-teacher" aria-hidden="true"></i> Teachers List</h2>
-                                <div id="teachersList" class="teachers-list" role="region" aria-label="Teachers list" aria-live="polite"></div>
+                                        <button type="submit" class="btn">
+                                            <i class="fas fa-user-plus" aria-hidden="true"></i> Add Teacher
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Teachers List -->
+                                <div class="teachers-list-section">
+                                    <h3>Teachers List</h3>
+                                    <div id="teachersList" class="data-list" aria-live="polite"></div>
+                                </div>
                             </section>
                         </div>
                     </div>
 
-                    <!-- Reports Section -->
+                    <!-- 3. STUDENTS MANAGEMENT SECTION -->
+                    <div id="studentsContent" class="content-section hidden">
+                        <div class="full-width">
+                            <section class="card" aria-labelledby="students-management-title">
+                                <h2 id="students-management-title">
+                                    <i class="fas fa-users" aria-hidden="true"></i> Students Management
+                                </h2>
+                                
+                                <!-- Students Import -->
+                                <div class="import-section" role="region" aria-labelledby="import-students-title">
+                                    <h3 id="import-students-title">Import Students</h3>
+                                    <div class="import-controls">
+                                        <button class="btn btn-secondary" id="downloadStudentsTemplate">
+                                            <i class="fas fa-download" aria-hidden="true"></i> Download Template
+                                        </button>
+                                        <label class="btn file-upload-btn">
+                                            <i class="fas fa-upload" aria-hidden="true"></i> Import Students
+                                            <input 
+                                                type="file" 
+                                                accept=".csv,.xlsx,.xls" 
+                                                id="studentsFileInput" 
+                                                class="file-input"
+                                            >
+                                        </label>
+                                    </div>
+                                    <p class="import-help">
+                                        Upload CSV or Excel with columns: first_name, last_name, email, student_number, date_of_birth, phone_number, address, classroom_name, parent_name, parent_email, parent_phone
+                                    </p>
+                                </div>
+
+                                <!-- Add Student Form -->
+                                <div class="form-section">
+                                    <h3>Add New Student</h3>
+                                    <form id="studentForm" novalidate>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="student-first-name">First Name <span class="required">*</span></label>
+                                                <input 
+                                                    type="text" 
+                                                    id="student-first-name"
+                                                    name="first_name" 
+                                                    class="form-control" 
+                                                    required 
+                                                    maxlength="100"
+                                                />
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="student-last-name">Last Name <span class="required">*</span></label>
+                                                <input 
+                                                    type="text" 
+                                                    id="student-last-name"
+                                                    name="last_name" 
+                                                    class="form-control" 
+                                                    required 
+                                                    maxlength="100"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="student-email">Email <span class="required">*</span></label>
+                                                <input 
+                                                    type="email" 
+                                                    id="student-email"
+                                                    name="email" 
+                                                    class="form-control" 
+                                                    required 
+                                                    maxlength="255"
+                                                />
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="student-number">Student Number <span class="required">*</span></label>
+                                                <input 
+                                                    type="text" 
+                                                    id="student-number"
+                                                    name="student_number" 
+                                                    class="form-control" 
+                                                    required 
+                                                    maxlength="20"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="student-classroom">Classroom</label>
+                                                <select id="student-classroom" name="classroom_id" class="form-control">
+                                                    <option value="">Select Classroom</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="student-birth-date">Date of Birth</label>
+                                                <input 
+                                                    type="date" 
+                                                    id="student-birth-date"
+                                                    name="date_of_birth" 
+                                                    class="form-control"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="student-phone">Phone Number</label>
+                                                <input 
+                                                    type="tel" 
+                                                    id="student-phone"
+                                                    name="phone" 
+                                                    class="form-control" 
+                                                    maxlength="20"
+                                                />
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="student-parent-name">Parent Name</label>
+                                                <input 
+                                                    type="text" 
+                                                    id="student-parent-name"
+                                                    name="parent_name" 
+                                                    class="form-control" 
+                                                    maxlength="200"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="student-parent-email">Parent Email</label>
+                                                <input 
+                                                    type="email" 
+                                                    id="student-parent-email"
+                                                    name="parent_email" 
+                                                    class="form-control" 
+                                                    maxlength="255"
+                                                />
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="student-parent-phone">Parent Phone</label>
+                                                <input 
+                                                    type="tel" 
+                                                    id="student-parent-phone"
+                                                    name="parent_phone" 
+                                                    class="form-control" 
+                                                    maxlength="20"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="student-address">Address</label>
+                                            <textarea 
+                                                id="student-address"
+                                                name="address" 
+                                                class="form-control" 
+                                                rows="2" 
+                                                maxlength="500"
+                                            ></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>
+                                                <input type="checkbox" name="is_enrolled" value="true" checked>
+                                                Currently Enrolled
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="btn">
+                                            <i class="fas fa-user-plus" aria-hidden="true"></i> Add Student
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Students Filter and List -->
+                                <div class="students-list-section">
+                                    <h3>Students List</h3>
+                                    <div class="form-group">
+                                        <label for="studentsClassroomFilter">Filter by Classroom</label>
+                                        <select id="studentsClassroomFilter" class="form-control">
+                                            <option value="all">All Classrooms</option>
+                                        </select>
+                                    </div>
+                                    <div id="studentsList" class="data-list" aria-live="polite"></div>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+
+                    <!-- 4. TEACHER ATTENDANCE SECTION -->
+                    <div id="teachers-attendanceContent" class="content-section hidden">
+                        <div class="full-width">
+                            <section class="card" aria-labelledby="teacher-attendance-title">
+                                <h2 id="teacher-attendance-title">
+                                    <i class="fas fa-user-check" aria-hidden="true"></i> Teacher Attendance
+                                </h2>
+                                
+                                <!-- Record Teacher Attendance -->
+                                <div class="form-section">
+                                    <h3>Record Teacher Attendance</h3>
+                                    <form id="teacherAttendanceForm">
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="teacherAttendanceDate">Date</label>
+                                                <input 
+                                                    type="date" 
+                                                    id="teacherAttendanceDate" 
+                                                    class="form-control" 
+                                                    required
+                                                />
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="teacherSelect">Teacher (Admin Only)</label>
+                                                <select id="teacherSelect" class="form-control">
+                                                    <option value="">Select Teacher</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn" id="loadTeachersAttendanceBtn">
+                                            <i class="fas fa-users" aria-hidden="true"></i> Load Teachers
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Teacher Attendance List -->
+                                <div id="teacherAttendanceList" class="attendance-list" aria-live="polite"></div>
+                            </section>
+                        </div>
+                    </div>
+
+                    <!-- 5. STUDENT ATTENDANCE SECTION -->
+                    <div id="students-attendanceContent" class="content-section hidden">
+                        <div class="full-width">
+                            <section class="card" aria-labelledby="student-attendance-title">
+                                <h2 id="student-attendance-title">
+                                    <i class="fas fa-clipboard-check" aria-hidden="true"></i> Student Attendance
+                                </h2>
+                                
+                                <!-- Record Student Attendance -->
+                                <div class="form-section">
+                                    <h3>Take Student Attendance</h3>
+                                    <form id="studentAttendanceForm">
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="studentAttendanceDate">Date</label>
+                                                <input 
+                                                    type="date" 
+                                                    id="studentAttendanceDate" 
+                                                    class="form-control" 
+                                                    required
+                                                />
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="attendanceClassroom">Classroom</label>
+                                                <select id="attendanceClassroom" class="form-control" required>
+                                                    <option value="">Select Classroom</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn" id="loadStudentsForAttendanceBtn">
+                                            <i class="fas fa-users" aria-hidden="true"></i> Load Students
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Student Attendance List -->
+                                <div id="studentAttendanceList" class="attendance-list" aria-live="polite"></div>
+                            </section>
+                        </div>
+                    </div>
+
+                    <!-- 6. EVALUATIONS SECTION -->
+                    <div id="evaluationsContent" class="content-section hidden">
+                        <div class="full-width">
+                            <section class="card" aria-labelledby="evaluations-title">
+                                <h2 id="evaluations-title">
+                                    <i class="fas fa-tasks" aria-hidden="true"></i> Evaluations & Grades
+                                </h2>
+                                
+                                <!-- Create Evaluation -->
+                                <div class="form-section">
+                                    <h3>Create New Evaluation</h3>
+                                    <form id="evaluationForm">
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="evaluation-name">Evaluation Name <span class="required">*</span></label>
+                                                <input 
+                                                    type="text" 
+                                                    id="evaluation-name"
+                                                    name="name" 
+                                                    class="form-control" 
+                                                    required 
+                                                    placeholder="e.g., Math Quiz 1"
+                                                />
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="evaluation-type">Type <span class="required">*</span></label>
+                                                <select id="evaluation-type" name="type" class="form-control" required>
+                                                    <option value="">Select Type</option>
+                                                    <option value="quiz">Quiz</option>
+                                                    <option value="test">Test</option>
+                                                    <option value="assignment">Assignment</option>
+                                                    <option value="project">Project</option>
+                                                    <option value="exam">Exam</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="evaluation-subject">Subject <span class="required">*</span></label>
+                                                <select id="evaluation-subject" name="subject_id" class="form-control" required>
+                                                    <option value="">Select Subject</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="evaluation-classroom">Classroom <span class="required">*</span></label>
+                                                <select id="evaluation-classroom" name="classroom_id" class="form-control" required>
+                                                    <option value="">Select Classroom</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="evaluation-date">Evaluation Date</label>
+                                                <input 
+                                                    type="date" 
+                                                    id="evaluation-date"
+                                                    name="evaluation_date" 
+                                                    class="form-control"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="evaluation-max-points">Max Points</label>
+                                                <input 
+                                                    type="number" 
+                                                    id="evaluation-max-points"
+                                                    name="max_points" 
+                                                    class="form-control" 
+                                                    min="1" 
+                                                    step="0.01" 
+                                                    value="20"
+                                                />
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="evaluation-weight">Weight</label>
+                                                <input 
+                                                    type="number" 
+                                                    id="evaluation-weight"
+                                                    name="weight" 
+                                                    class="form-control" 
+                                                    min="0.1" 
+                                                    step="0.1" 
+                                                    value="1.0"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="evaluation-description">Description</label>
+                                            <textarea 
+                                                id="evaluation-description"
+                                                name="description" 
+                                                class="form-control" 
+                                                rows="2"
+                                            ></textarea>
+                                        </div>
+                                        <button type="submit" class="btn">
+                                            <i class="fas fa-plus" aria-hidden="true"></i> Create Evaluation
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Grade Entry -->
+                                <div class="form-section">
+                                    <h3>Enter Grades</h3>
+                                    <form id="gradeEntryForm">
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="grade-evaluation">Evaluation</label>
+                                                <select id="grade-evaluation" name="evaluation_id" class="form-control" required>
+                                                    <option value="">Select Evaluation</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="grade-student">Student</label>
+                                                <select id="grade-student" name="student_id" class="form-control" required>
+                                                    <option value="">Select Student</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="grade-points-earned">Points Earned</label>
+                                                <input 
+                                                    type="number" 
+                                                    id="grade-points-earned"
+                                                    name="points_earned" 
+                                                    class="form-control" 
+                                                    min="0" 
+                                                    step="0.01" 
+                                                    required
+                                                />
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="grade-points-possible">Points Possible</label>
+                                                <input 
+                                                    type="number" 
+                                                    id="grade-points-possible"
+                                                    name="points_possible" 
+                                                    class="form-control" 
+                                                    min="1" 
+                                                    step="0.01" 
+                                                    value="20" 
+                                                    readonly
+                                                />
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="grade-comments">Comments</label>
+                                            <textarea 
+                                                id="grade-comments"
+                                                name="comments" 
+                                                class="form-control" 
+                                                rows="2"
+                                            ></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>
+                                                <input type="checkbox" name="is_excused" value="true">
+                                                Excused
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="btn">
+                                            <i class="fas fa-save" aria-hidden="true"></i> Save Grade
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Evaluations List -->
+                                <div class="evaluations-list-section">
+                                    <h3>Recent Evaluations</h3>
+                                    <div class="form-group">
+                                        <label for="evaluationsClassroomFilter">Filter by Classroom</label>
+                                        <select id="evaluationsClassroomFilter" class="form-control">
+                                            <option value="all">All Classrooms</option>
+                                        </select>
+                                    </div>
+                                    <div id="evaluationsList" class="data-list" aria-live="polite"></div>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+
+                    <!-- 7. REPORTS SECTION -->
                     <div id="reportsContent" class="content-section hidden">
                         <div class="full-width">
                             <section class="card" aria-labelledby="reports-title">
-                                <h2 id="reports-title"><i class="fas fa-chart-bar" aria-hidden="true"></i> Reports & Analytics</h2>
-                                <form id="reportsForm" novalidate>
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="reportClassroom">Classroom</label>
-                                            <select id="reportClassroom" class="form-control" required>
-                                                <option value="">Select Classroom</option>
-                                            </select>
+                                <h2 id="reports-title">
+                                    <i class="fas fa-chart-bar" aria-hidden="true"></i> Reports & Analytics
+                                </h2>
+                                
+                                <!-- Generate Reports -->
+                                <div class="form-section">
+                                    <h3>Generate Reports</h3>
+                                    <form id="reportsForm">
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="reportType">Report Type</label>
+                                                <select id="reportType" class="form-control" required>
+                                                    <option value="">Select Report Type</option>
+                                                    <option value="student_report">Student Report Card</option>
+                                                    <option value="classroom_report">Classroom Report</option>
+                                                    <option value="attendance_report">Attendance Report</option>
+                                                    <option value="grade_analysis">Grade Analysis</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="reportClassroom">Classroom</label>
+                                                <select id="reportClassroom" class="form-control">
+                                                    <option value="all">All Classrooms</option>
+                                                </select>
+                                            </div>
                                         </div>
-                                        <div class="form-group">
-                                            <label for="reportPeriod">Evaluation Period</label>
-                                            <select id="reportPeriod" class="form-control" required>
-                                                <option value="">Select Period</option>
-                                            </select>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="reportPeriod">Evaluation Period</label>
+                                                <select id="reportPeriod" class="form-control">
+                                                    <option value="">Select Period</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="reportStudent">Student (for individual report)</label>
+                                                <select id="reportStudent" class="form-control">
+                                                    <option value="">Select Student</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="reportDateFrom">From Date</label>
+                                                <input type="date" id="reportDateFrom" class="form-control" />
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="reportDateTo">To Date</label>
+                                                <input type="date" id="reportDateTo" class="form-control" />
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn" id="generateReportsBtn">
+                                            <i class="fas fa-file-pdf" aria-hidden="true"></i> Generate Reports
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Reports List -->
+                                <div class="reports-list-section">
+                                    <h3>Generated Reports</h3>
+                                    <div id="reportsList" class="reports-list" aria-live="polite">
+                                        <!-- Reports will be populated here -->
+                                    </div>
+                                </div>
+
+                                <!-- Analytics Dashboard -->
+                                <div class="analytics-section">
+                                    <h3>Analytics Overview</h3>
+                                    <div class="analytics-grid">
+                                        <div class="analytics-card">
+                                            <h4>Grade Distribution</h4>
+                                            <canvas id="gradeDistributionChart" width="300" height="200"></canvas>
+                                        </div>
+                                        <div class="analytics-card">
+                                            <h4>Attendance Trends</h4>
+                                            <canvas id="attendanceTrendsChart" width="300" height="200"></canvas>
+                                        </div>
+                                        <div class="analytics-card">
+                                            <h4>Performance by Subject</h4>
+                                            <canvas id="subjectPerformanceChart" width="300" height="200"></canvas>
+                                        </div>
+                                        <div class="analytics-card">
+                                            <h4>Top Performers</h4>
+                                            <div id="topPerformers" class="performance-list">
+                                                <!-- Top performers list -->
+                                            </div>
                                         </div>
                                     </div>
-                                    <button type="button" class="btn" id="generateReportsBtn">
-                                        <i class="fas fa-file-pdf" aria-hidden="true"></i> Generate Reports
-                                    </button>
-                                </form>
-                                
-                                <div id="reportsList" class="reports-list" role="region" aria-label="Generated reports" aria-live="polite"></div>
+                                </div>
                             </section>
                         </div>
                     </div>
 
-                    <!-- Settings Section -->
+                    <!-- 8. SETTINGS SECTION -->
                     <div id="settingsContent" class="content-section hidden">
                         <div class="full-width">
                             <!-- System Settings -->
                             <section class="card" aria-labelledby="system-settings-title">
-                                <h2 id="system-settings-title"><i class="fas fa-cog" aria-hidden="true"></i> System Settings</h2>
-                                <form id="systemSettingsForm" novalidate>
-                                    <div class="form-group">
-                                        <label for="academic-year">Academic Year</label>
-                                        <input 
-                                            type="text" 
-                                            id="academic-year"
-                                            class="form-control" 
-                                            value="2024-2025" 
-                                            readonly
-                                            aria-describedby="academic-year-help"
-                                        >
-                                        <div id="academic-year-help" class="form-help">Contact administrator to change academic year</div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="school-name">School Name</label>
-                                        <input 
-                                            type="text" 
-                                            id="school-name"
-                                            class="form-control" 
-                                            value="DPM School"
-                                            aria-describedby="school-name-error"
-                                        >
-                                        <div id="school-name-error" class="error-message" role="alert" aria-live="polite"></div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="school-address">School Address</label>
-                                        <textarea 
-                                            id="school-address"
-                                            class="form-control" 
-                                            rows="3"
-                                            aria-describedby="school-address-error"
-                                        >123 Education Street, City, Country</textarea>
-                                        <div id="school-address-error" class="error-message" role="alert" aria-live="polite"></div>
-                                    </div>
-                                    <button type="submit" class="btn">
-                                        <i class="fas fa-save" aria-hidden="true"></i> Save Settings
-                                    </button>
-                                </form>
+                                <h2 id="system-settings-title">
+                                    <i class="fas fa-cog" aria-hidden="true"></i> System Settings
+                                </h2>
+                                
+                                <!-- School Information -->
+                                <div class="form-section">
+                                    <h3>School Information</h3>
+                                    <form id="schoolInfoForm">
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="school-name">School Name</label>
+                                                <input 
+                                                    type="text" 
+                                                    id="school-name"
+                                                    name="school_name"
+                                                    class="form-control" 
+                                                    value="DPM School"
+                                                />
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="academic-year">Academic Year</label>
+                                                <input 
+                                                    type="text" 
+                                                    id="academic-year"
+                                                    name="academic_year"
+                                                    class="form-control" 
+                                                    value="2024-2025"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="school-address">School Address</label>
+                                            <textarea 
+                                                id="school-address"
+                                                name="address"
+                                                class="form-control" 
+                                                rows="3"
+                                            >123 Education Street, City, Country</textarea>
+                                        </div>
+                                        <button type="submit" class="btn">
+                                            <i class="fas fa-save" aria-hidden="true"></i> Save School Info
+                                        </button>
+                                    </form>
+                                </div>
                             </section>
 
                             <!-- Classrooms Management (Admin only) -->
-                            <section class="card" id="classroomsManagement" style="display: none;" aria-labelledby="classrooms-management-title">
-                                <h2 id="classrooms-management-title"><i class="fas fa-school" aria-hidden="true"></i> Classrooms Management</h2>
+                            <section class="card admin-only" aria-labelledby="classrooms-settings-title">
+                                <h2 id="classrooms-settings-title">
+                                    <i class="fas fa-school" aria-hidden="true"></i> Classrooms Management
+                                </h2>
                                 
-                                <!-- Import Section -->
+                                <!-- Import Classrooms -->
                                 <div class="import-section">
+                                    <h3>Import Classrooms</h3>
                                     <div class="import-controls">
                                         <button class="btn btn-secondary" id="downloadClassroomsTemplate">
                                             <i class="fas fa-download" aria-hidden="true"></i> Download Template
@@ -520,46 +948,42 @@
                                                 accept=".csv,.xlsx,.xls" 
                                                 id="classroomsFileInput" 
                                                 class="file-input"
-                                                aria-describedby="classrooms-import-help"
                                             >
                                         </label>
                                     </div>
-                                    <p class="import-help" id="classrooms-import-help">
-                                        <i class="fas fa-info-circle" aria-hidden="true"></i> 
-                                        Upload CSV or Excel file with columns: name, grade_level, description, capacity, head_teacher_email
+                                    <p class="import-help">
+                                        Upload CSV or Excel with columns: name, grade_level, description, capacity, head_teacher_email
                                     </p>
                                 </div>
 
-                                <!-- Manual Add Form -->
+                                <!-- Add Classroom Form -->
                                 <div class="form-section">
                                     <h3>Add New Classroom</h3>
-                                    <form id="classroomForm" novalidate>
+                                    <form id="classroomForm">
                                         <div class="form-row">
                                             <div class="form-group">
-                                                <label for="classroom-name">Classroom Name</label>
+                                                <label for="classroom-name">Classroom Name <span class="required">*</span></label>
                                                 <input 
                                                     type="text" 
                                                     id="classroom-name"
                                                     name="name" 
                                                     class="form-control" 
                                                     required 
-                                                    placeholder="e.g., Form 5"
-                                                    aria-describedby="classroom-name-error"
+                                                    maxlength="50"
+                                                    placeholder="e.g., Form 5A"
                                                 />
-                                                <div id="classroom-name-error" class="error-message" role="alert" aria-live="polite"></div>
                                             </div>
                                             <div class="form-group">
-                                                <label for="classroom-grade">Grade Level</label>
+                                                <label for="classroom-grade">Grade Level <span class="required">*</span></label>
                                                 <input 
                                                     type="text" 
                                                     id="classroom-grade"
                                                     name="grade_level" 
                                                     class="form-control" 
                                                     required 
+                                                    maxlength="50"
                                                     placeholder="e.g., 10"
-                                                    aria-describedby="classroom-grade-error"
                                                 />
-                                                <div id="classroom-grade-error" class="error-message" role="alert" aria-live="polite"></div>
                                             </div>
                                         </div>
                                         <div class="form-row">
@@ -572,9 +996,7 @@
                                                     class="form-control" 
                                                     min="1" 
                                                     placeholder="30"
-                                                    aria-describedby="classroom-capacity-error"
                                                 />
-                                                <div id="classroom-capacity-error" class="error-message" role="alert" aria-live="polite"></div>
                                             </div>
                                             <div class="form-group">
                                                 <label for="classroom-head-teacher">Head Teacher Email</label>
@@ -584,10 +1006,7 @@
                                                     name="head_teacher_email" 
                                                     class="form-control" 
                                                     placeholder="teacher@school.com"
-                                                    aria-describedby="classroom-head-teacher-error"
-                                                    autocomplete="email"
                                                 />
-                                                <div id="classroom-head-teacher-error" class="error-message" role="alert" aria-live="polite"></div>
                                             </div>
                                         </div>
                                         <div class="form-group">
@@ -597,24 +1016,31 @@
                                                 name="description" 
                                                 class="form-control" 
                                                 rows="2" 
-                                                placeholder="Optional description"
-                                                aria-describedby="classroom-description-error"
+                                                maxlength="500"
                                             ></textarea>
-                                            <div id="classroom-description-error" class="error-message" role="alert" aria-live="polite"></div>
                                         </div>
                                         <button type="submit" class="btn">
                                             <i class="fas fa-plus" aria-hidden="true"></i> Add Classroom
                                         </button>
                                     </form>
                                 </div>
+
+                                <!-- Classrooms List -->
+                                <div class="classrooms-list-section">
+                                    <h3>Classrooms List</h3>
+                                    <div id="classroomsList" class="data-list" aria-live="polite"></div>
+                                </div>
                             </section>
 
                             <!-- Subjects Management (Admin only) -->
-                            <section class="card" id="subjectsManagement" style="display: none;" aria-labelledby="subjects-management-title">
-                                <h2 id="subjects-management-title"><i class="fas fa-book" aria-hidden="true"></i> Subjects Management</h2>
+                            <section class="card admin-only" aria-labelledby="subjects-settings-title">
+                                <h2 id="subjects-settings-title">
+                                    <i class="fas fa-book" aria-hidden="true"></i> Subjects Management
+                                </h2>
                                 
-                                <!-- Import Section -->
+                                <!-- Import Subjects -->
                                 <div class="import-section">
+                                    <h3>Import Subjects</h3>
                                     <div class="import-controls">
                                         <button class="btn btn-secondary" id="downloadSubjectsTemplate">
                                             <i class="fas fa-download" aria-hidden="true"></i> Download Template
@@ -626,63 +1052,55 @@
                                                 accept=".csv,.xlsx,.xls" 
                                                 id="subjectsFileInput" 
                                                 class="file-input"
-                                                aria-describedby="subjects-import-help"
                                             >
                                         </label>
                                     </div>
-                                    <p class="import-help" id="subjects-import-help">
-                                        <i class="fas fa-info-circle" aria-hidden="true"></i> 
-                                        Upload CSV or Excel file with columns: name, code, description, coefficient
+                                    <p class="import-help">
+                                        Upload CSV or Excel with columns: name, code, description, coefficient
                                     </p>
                                 </div>
 
-                                <!-- Manual Add Form -->
+                                <!-- Add Subject Form -->
                                 <div class="form-section">
                                     <h3>Add New Subject</h3>
-                                    <form id="subjectForm" novalidate>
+                                    <form id="subjectForm">
                                         <div class="form-row">
                                             <div class="form-group">
-                                                <label for="subject-name">Subject Name</label>
+                                                <label for="subject-name">Subject Name <span class="required">*</span></label>
                                                 <input 
                                                     type="text" 
                                                     id="subject-name"
                                                     name="name" 
                                                     class="form-control" 
                                                     required 
+                                                    maxlength="100"
                                                     placeholder="e.g., Mathematics"
-                                                    aria-describedby="subject-name-error"
                                                 />
-                                                <div id="subject-name-error" class="error-message" role="alert" aria-live="polite"></div>
                                             </div>
                                             <div class="form-group">
-                                                <label for="subject-code">Subject Code</label>
+                                                <label for="subject-code">Subject Code <span class="required">*</span></label>
                                                 <input 
                                                     type="text" 
                                                     id="subject-code"
                                                     name="code" 
                                                     class="form-control" 
                                                     required 
+                                                    maxlength="20"
                                                     placeholder="e.g., MATH101"
-                                                    aria-describedby="subject-code-error"
                                                 />
-                                                <div id="subject-code-error" class="error-message" role="alert" aria-live="polite"></div>
                                             </div>
                                         </div>
-                                        <div class="form-row">
-                                            <div class="form-group">
-                                                <label for="subject-coefficient">Coefficient</label>
-                                                <input 
-                                                    type="number" 
-                                                    id="subject-coefficient"
-                                                    name="coefficient" 
-                                                    class="form-control" 
-                                                    min="1" 
-                                                    step="0.1" 
-                                                    placeholder="1"
-                                                    aria-describedby="subject-coefficient-error"
-                                                />
-                                                <div id="subject-coefficient-error" class="error-message" role="alert" aria-live="polite"></div>
-                                            </div>
+                                        <div class="form-group">
+                                            <label for="subject-coefficient">Coefficient</label>
+                                            <input 
+                                                type="number" 
+                                                id="subject-coefficient"
+                                                name="coefficient" 
+                                                class="form-control" 
+                                                min="1" 
+                                                step="1" 
+                                                value="1"
+                                            />
                                         </div>
                                         <div class="form-group">
                                             <label for="subject-description">Description</label>
@@ -691,15 +1109,74 @@
                                                 name="description" 
                                                 class="form-control" 
                                                 rows="2" 
-                                                placeholder="Optional description"
-                                                aria-describedby="subject-description-error"
+                                                maxlength="500"
                                             ></textarea>
-                                            <div id="subject-description-error" class="error-message" role="alert" aria-live="polite"></div>
                                         </div>
                                         <button type="submit" class="btn">
                                             <i class="fas fa-plus" aria-hidden="true"></i> Add Subject
                                         </button>
                                     </form>
+                                </div>
+
+                                <!-- Subjects List -->
+                                <div class="subjects-list-section">
+                                    <h3>Subjects List</h3>
+                                    <div id="subjectsList" class="data-list" aria-live="polite"></div>
+                                </div>
+                            </section>
+
+                            <!-- Teacher Assignments (Admin only) -->
+                            <section class="card admin-only" aria-labelledby="assignments-settings-title">
+                                <h2 id="assignments-settings-title">
+                                    <i class="fas fa-users-cog" aria-hidden="true"></i> Teacher Assignments
+                                </h2>
+                                
+                                <!-- Create Assignment -->
+                                <div class="form-section">
+                                    <h3>Assign Teacher to Subject & Classroom</h3>
+                                    <form id="assignmentForm">
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="assignment-teacher">Teacher <span class="required">*</span></label>
+                                                <select id="assignment-teacher" name="teacher_id" class="form-control" required>
+                                                    <option value="">Select Teacher</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="assignment-subject">Subject <span class="required">*</span></label>
+                                                <select id="assignment-subject" name="subject_id" class="form-control" required>
+                                                    <option value="">Select Subject</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="assignment-classroom">Classroom <span class="required">*</span></label>
+                                                <select id="assignment-classroom" name="classroom_id" class="form-control" required>
+                                                    <option value="">Select Classroom</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="assignment-academic-year">Academic Year</label>
+                                                <input 
+                                                    type="text" 
+                                                    id="assignment-academic-year"
+                                                    name="academic_year" 
+                                                    class="form-control" 
+                                                    value="2024-2025"
+                                                />
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="btn">
+                                            <i class="fas fa-plus" aria-hidden="true"></i> Create Assignment
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Assignments List -->
+                                <div class="assignments-list-section">
+                                    <h3>Current Assignments</h3>
+                                    <div id="assignmentsList" class="data-list" aria-live="polite"></div>
                                 </div>
                             </section>
                         </div>

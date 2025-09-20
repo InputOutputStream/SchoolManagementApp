@@ -1,4 +1,4 @@
-// UI Utilities and Helper Functions
+// UI Utilities and Helper Functions - Updated for new HTML structure
 export class UIUtils {
     constructor() {
         this.searchTimeout = null;
@@ -7,20 +7,22 @@ export class UIUtils {
         this.setupNavigation();
     }
 
-    // Section Navigation
+    // Updated section navigation for new structure
     showSection(sectionName) {
         if (!sectionName) {
             console.error('Section name is required');
             return;
         }
 
-        // Hide all content sections
+        // Updated content sections list to match new HTML structure
         const contents = [
-            'dashboardContent', 
-            'attendanceContent', 
+            'dashboardContent',
+            'teachersContent',
             'studentsContent', 
-            'reportsContent', 
-            'teachersContent', 
+            'teachers-attendanceContent',
+            'students-attendanceContent',
+            'evaluationsContent',
+            'reportsContent',
             'settingsContent'
         ];
         
@@ -46,6 +48,398 @@ export class UIUtils {
         this.updateSidebarActiveState(sectionName);
     }
 
+    loadSectionData(sectionName) {
+        const dashboardManager = window.dashboardManager;
+        if (!dashboardManager) return;
+
+        switch(sectionName) {
+            case 'dashboard':
+                dashboardManager.loadDashboardData().catch(console.error);
+                break;
+                
+            case 'teachers':
+                this.loadTeachersSection(dashboardManager);
+                break;
+                
+            case 'students':
+                this.loadStudentsSection(dashboardManager);
+                break;
+                
+            case 'teachers-attendance':
+                this.loadTeacherAttendanceSection();
+                break;
+                
+            case 'students-attendance':
+                this.loadStudentAttendanceSection();
+                break;
+                
+            case 'evaluations':
+                this.loadEvaluationsSection();
+                break;
+                
+            case 'reports':
+                this.loadReportsSection();
+                break;
+                
+            case 'settings':
+                this.loadSettingsSection();
+                break;
+                
+            default:
+                console.log(`No special data loading needed for section: ${sectionName}`);
+        }
+    }
+
+    async loadTeachersSection(dashboardManager) {
+        try {
+            const authManager = window.authManager;
+            if (authManager?.currentUser?.role === 'admin') {
+                await dashboardManager.loadTeachersList();
+                await this.loadTeacherOptions();
+            }
+        } catch (error) {
+            console.error('Error loading teachers section:', error);
+            this.showMessage('Failed to load teachers data', 'error');
+        }
+    }
+
+    async loadStudentsSection(dashboardManager) {
+        try {
+            await dashboardManager.loadStudents();
+            await dashboardManager.loadClassrooms();
+        } catch (error) {
+            console.error('Error loading students section:', error);
+            this.showMessage('Failed to load students data', 'error');
+        }
+    }
+
+    async loadTeacherAttendanceSection() {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const teacherAttendanceDateInput = document.getElementById('teacherAttendanceDate');
+            if (teacherAttendanceDateInput && !teacherAttendanceDateInput.value) {
+                teacherAttendanceDateInput.value = today;
+            }
+            
+            await this.loadTeacherOptions();
+        } catch (error) {
+            console.error('Error loading teacher attendance section:', error);
+        }
+    }
+
+    async loadStudentAttendanceSection() {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const studentAttendanceDateInput = document.getElementById('studentAttendanceDate');
+            if (studentAttendanceDateInput && !studentAttendanceDateInput.value) {
+                studentAttendanceDateInput.value = today;
+            }
+            
+            if (window.dashboardManager) {
+                await window.dashboardManager.loadClassrooms();
+            }
+        } catch (error) {
+            console.error('Error loading student attendance section:', error);
+        }
+    }
+
+    async loadEvaluationsSection() {
+        try {
+            await Promise.all([
+                this.loadClassroomOptions(),
+                this.loadSubjectOptions(),
+                this.loadEvaluationPeriods(),
+                this.loadEvaluationsList()
+            ]);
+        } catch (error) {
+            console.error('Error loading evaluations section:', error);
+            this.showMessage('Failed to load evaluations data', 'error');
+        }
+    }
+
+    async loadReportsSection() {
+        try {
+            await Promise.all([
+                this.loadClassroomOptions(),
+                this.loadEvaluationPeriods(),
+                this.loadStudentOptions()
+            ]);
+        } catch (error) {
+            console.error('Error loading reports section:', error);
+            this.showMessage('Failed to load reports data', 'error');
+        }
+    }
+
+    async loadSettingsSection() {
+        try {
+            const authManager = window.authManager;
+            if (authManager?.currentUser?.role === 'admin') {
+                await Promise.all([
+                    this.loadClassroomsList(),
+                    this.loadSubjectsList(),
+                    this.loadTeacherOptions(),
+                    this.loadAssignmentsList()
+                ]);
+            }
+        } catch (error) {
+            console.error('Error loading settings section:', error);
+            this.showMessage('Failed to load settings data', 'error');
+        }
+    }
+
+    // Helper methods for loading options/data - updated for new HTML structure
+    async loadTeacherOptions() {
+        if (!window.authManager?.apiClient) return;
+        
+        try {
+            const teachers = await window.authManager.apiClient.get('/admin/teachers');
+            this.populateSelect('teacherSelect', teachers, 'id', teacher => 
+                `${teacher.user?.first_name} ${teacher.user?.last_name} (${teacher.employee_number})`
+            );
+            this.populateSelect('assignment-teacher', teachers, 'id', teacher => 
+                `${teacher.user?.first_name} ${teacher.user?.last_name}`
+            );
+        } catch (error) {
+            console.error('Error loading teacher options:', error);
+        }
+    }
+
+    async loadClassroomOptions() {
+        if (!window.dashboardManager) return;
+        
+        try {
+            const classrooms = await window.dashboardManager.loadClassrooms();
+            // Updated to match new HTML element IDs
+            this.populateSelect('evaluation-classroom', classrooms, 'id', 'name');
+            this.populateSelect('assignment-classroom', classrooms, 'id', 'name');
+            this.populateSelect('student-classroom', classrooms, 'id', 'name');
+            this.populateSelect('reportClassroom', classrooms, 'id', 'name');
+            this.populateSelect('evaluationsClassroomFilter', classrooms, 'id', 'name');
+        } catch (error) {
+            console.error('Error loading classroom options:', error);
+        }
+    }
+
+    async loadSubjectOptions() {
+        if (!window.dashboardManager) return;
+        
+        try {
+            const subjects = await window.dashboardManager.loadSubjects();
+            this.populateSelect('evaluation-subject', subjects, 'id', 'name');
+            this.populateSelect('assignment-subject', subjects, 'id', 'name');
+        } catch (error) {
+            console.error('Error loading subject options:', error);
+        }
+    }
+
+    async loadStudentOptions() {
+        if (!window.dashboardManager) return;
+        
+        try {
+            const students = await window.dashboardManager.loadStudents();
+            this.populateSelect('grade-student', students, 'id', student => 
+                `${student.user?.first_name} ${student.user?.last_name} (${student.student_number})`
+            );
+            this.populateSelect('reportStudent', students, 'id', student => 
+                `${student.user?.first_name} ${student.user?.last_name}`
+            );
+        } catch (error) {
+            console.error('Error loading student options:', error);
+        }
+    }
+
+    async loadEvaluationPeriods() {
+        if (!window.authManager?.apiClient) return;
+        
+        try {
+            const periods = await window.authManager.apiClient.get('/evaluation-periods');
+            this.populateSelect('reportPeriod', periods, 'id', 'name');
+        } catch (error) {
+            console.error('Error loading evaluation periods:', error);
+        }
+    }
+
+    async loadEvaluationsList() {
+        const list = document.getElementById('evaluationsList');
+        if (!list) return;
+
+        try {
+            const evaluations = await window.authManager.apiClient.get('/evaluations');
+            list.innerHTML = this.formatEvaluationsList(evaluations);
+        } catch (error) {
+            console.error('Error loading evaluations:', error);
+            list.innerHTML = '<p class="no-data">Failed to load evaluations</p>';
+        }
+    }
+
+    formatEvaluationsList(evaluations) {
+        if (!Array.isArray(evaluations) || evaluations.length === 0) {
+            return '<p class="no-data">No evaluations found</p>';
+        }
+
+        return evaluations.map(evaluation => `
+            <div class="evaluation-item">
+                <div class="evaluation-info">
+                    <h4>${this.escapeHtml(evaluation.name)}</h4>
+                    <p>${evaluation.type} - ${evaluation.subject?.name} (${evaluation.classroom?.name})</p>
+                    <small>${evaluation.evaluation_date}</small>
+                </div>
+                <div class="evaluation-actions">
+                    <button class="btn-small btn-info" onclick="viewEvaluation(${evaluation.id})">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    <button class="btn-small btn-secondary" onclick="editEvaluation(${evaluation.id})">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async loadClassroomsList() {
+        const list = document.getElementById('classroomsList');
+        if (!list) return;
+
+        try {
+            const classrooms = await window.authManager.apiClient.get('/admin/classrooms');
+            list.innerHTML = this.formatClassroomsList(classrooms);
+        } catch (error) {
+            console.error('Error loading classrooms:', error);
+            list.innerHTML = '<p class="no-data">Failed to load classrooms</p>';
+        }
+    }
+
+    formatClassroomsList(classrooms) {
+        if (!Array.isArray(classrooms) || classrooms.length === 0) {
+            return '<p class="no-data">No classrooms found</p>';
+        }
+
+        return `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Grade Level</th>
+                        <th>Capacity</th>
+                        <th>Head Teacher</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${classrooms.map(classroom => `
+                        <tr>
+                            <td>${this.escapeHtml(classroom.name)}</td>
+                            <td>${this.escapeHtml(classroom.level)}</td>
+                            <td>${classroom.max_students || 'N/A'}</td>
+                            <td>${classroom.head_teacher?.name || 'Not assigned'}</td>
+                            <td>
+                                <button class="btn-small btn-secondary" onclick="editClassroom(${classroom.id})">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    async loadSubjectsList() {
+        const list = document.getElementById('subjectsList');
+        if (!list) return;
+
+        try {
+            const subjects = await window.authManager.apiClient.get('/admin/subjects');
+            list.innerHTML = this.formatSubjectsList(subjects);
+        } catch (error) {
+            console.error('Error loading subjects:', error);
+            list.innerHTML = '<p class="no-data">Failed to load subjects</p>';
+        }
+    }
+
+    formatSubjectsList(subjects) {
+        if (!Array.isArray(subjects) || subjects.length === 0) {
+            return '<p class="no-data">No subjects found</p>';
+        }
+
+        return `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Code</th>
+                        <th>Coefficient</th>
+                        <th>Description</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${subjects.map(subject => `
+                        <tr>
+                            <td>${this.escapeHtml(subject.name)}</td>
+                            <td>${this.escapeHtml(subject.code)}</td>
+                            <td>${subject.coefficient}</td>
+                            <td>${this.escapeHtml(subject.description || 'N/A')}</td>
+                            <td>
+                                <button class="btn-small btn-secondary" onclick="editSubject(${subject.id})">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    async loadAssignmentsList() {
+        const list = document.getElementById('assignmentsList');
+        if (!list) return;
+
+        try {
+            const assignments = await window.authManager.apiClient.get('/admin/assignments');
+            list.innerHTML = this.formatAssignmentsList(assignments);
+        } catch (error) {
+            console.error('Error loading assignments:', error);
+            list.innerHTML = '<p class="no-data">Failed to load assignments</p>';
+        }
+    }
+
+    formatAssignmentsList(assignments) {
+        if (!Array.isArray(assignments) || assignments.length === 0) {
+            return '<p class="no-data">No assignments found</p>';
+        }
+
+        return `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Teacher</th>
+                        <th>Subject</th>
+                        <th>Classroom</th>
+                        <th>Academic Year</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${assignments.map(assignment => `
+                        <tr>
+                            <td>${assignment.teacher?.name || 'N/A'}</td>
+                            <td>${assignment.subject?.name || 'N/A'}</td>
+                            <td>${assignment.classroom?.name || 'N/A'}</td>
+                            <td>${assignment.academic_year || 'N/A'}</td>
+                            <td>
+                                <button class="btn-small btn-danger" onclick="deleteAssignment(${assignment.id})">
+                                    <i class="fas fa-trash"></i> Remove
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+    
     updateSidebarActiveState(sectionName) {
         // Reset all links
         document.querySelectorAll('.sidebar a.nav-link').forEach(link => {
@@ -63,103 +457,8 @@ export class UIUtils {
             console.warn(`Sidebar link not found for section: ${sectionName}`);
         }
     }
-    loadSectionData(sectionName) {
-        const dashboardManager = window.dashboardManager;
-        if (!dashboardManager) return;
 
-        switch(sectionName) {
-            case 'students':
-                this.loadStudentsSection(dashboardManager);
-                break;
-            case 'teachers':
-                this.loadTeachersSection(dashboardManager);
-                break;
-            case 'attendance':
-                this.loadAttendanceSection(dashboardManager);
-                break;
-            case 'reports':
-                this.loadReportsSection(dashboardManager);
-                break;
-            case 'dashboard':
-                dashboardManager.loadDashboardData().catch(console.error);
-                break;
-            default:
-                console.log(`No special data loading needed for section: ${sectionName}`);
-        }
-    }
-
-    async loadStudentsSection(dashboardManager) {
-        try {
-            await dashboardManager.loadStudents();
-        } catch (error) {
-            console.error('Error loading students section:', error);
-            this.showMessage('Failed to load students data', 'error');
-        }
-    }
-
-    async loadTeachersSection(dashboardManager) {
-        try {
-            const authManager = window.authManager;
-            if (authManager?.currentUser?.role === 'admin') {
-                await dashboardManager.loadTeachersList();
-            }
-        } catch (error) {
-            console.error('Error loading teachers section:', error);
-            this.showMessage('Failed to load teachers data', 'error');
-        }
-    }
-
-    async loadAttendanceSection(dashboardManager) {
-        try {
-            // Set current date for attendance
-            const today = new Date().toISOString().split('T')[0];
-            const attendanceDateInput = document.getElementById('attendanceDate');
-            if (attendanceDateInput && !attendanceDateInput.value) {
-                attendanceDateInput.value = today;
-            }
-        } catch (error) {
-            console.error('Error loading attendance section:', error);
-        }
-    }
-
-    async loadReportsSection(dashboardManager) {
-        try {
-            // Load evaluation periods if available
-            await this.loadEvaluationPeriods();
-        } catch (error) {
-            console.error('Error loading reports section:', error);
-            this.showMessage('Failed to load reports data', 'error');
-        }
-    }
-
-    async loadEvaluationPeriods() {
-        // This would load evaluation periods from the API
-        // For now, we'll populate with default values
-        const reportPeriodSelect = document.getElementById('reportPeriod');
-        if (reportPeriodSelect && reportPeriodSelect.children.length <= 1) {
-            const periods = [
-                { id: 1, name: 'First Trimester 2024' },
-                { id: 2, name: 'Second Trimester 2024' },
-                { id: 3, name: 'Third Trimester 2024' }
-            ];
-
-            // Clear existing options except the first one
-            const firstOption = reportPeriodSelect.querySelector('option');
-            reportPeriodSelect.innerHTML = '';
-            if (firstOption) {
-                reportPeriodSelect.appendChild(firstOption);
-            }
-
-            periods.forEach(period => {
-                const option = document.createElement('option');
-                option.value = period.id;
-                option.textContent = period.name;
-                reportPeriodSelect.appendChild(option);
-            });
-        }
-    }
-
-    // Search functionality
+    // Search functionality - updated to work with new structure
     initializeSearch() {
         const searchInput = document.getElementById('searchInput');
         if (!searchInput) {
@@ -167,41 +466,34 @@ export class UIUtils {
             return;
         }
         
-        // Clear any existing timeout
         if (this.searchTimeout) {
             clearTimeout(this.searchTimeout);
         }
         
         searchInput.addEventListener('input', (e) => {
-            // Clear previous timeout
             if (this.searchTimeout) {
                 clearTimeout(this.searchTimeout);
             }
             
-            // Debounce search to avoid too many operations
             this.searchTimeout = setTimeout(async () => {
                 const query = e.target.value.trim().toLowerCase();
                 
                 if (query.length > 2 && window.dashboardManager) {
                     try {
-                        // Search students by ID or name
                         const students = await window.dashboardManager.loadStudents();
                         const filteredStudents = this.filterStudents(students, query);
-                        
-                        // Display filtered results
                         window.dashboardManager.displayStudentsList(filteredStudents);
                     } catch (error) {
                         console.error('Search error:', error);
                         this.showMessage('Search failed', 'error');
                     }
                 } else if (query.length === 0) {
-                    // Show all students when search is cleared
                     window.dashboardManager.loadStudents().catch(error => {
                         console.error('Error loading students:', error);
                         this.showMessage('Failed to load students', 'error');
                     });
                 }
-            }, 300); // 300ms debounce
+            }, 300);
         });
     }
 
@@ -225,14 +517,12 @@ export class UIUtils {
 
     // Modal Management
     setupModalHandlers() {
-        // Close modals when clicking outside
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal')) {
                 this.closeModal(e.target);
             }
         });
 
-        // Close modals with close button
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('close') || e.target.closest('.close')) {
                 const modal = e.target.closest('.modal');
@@ -242,7 +532,6 @@ export class UIUtils {
             }
         });
 
-        // Close modals with Escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 const modals = document.querySelectorAll('.modal');
@@ -262,15 +551,12 @@ export class UIUtils {
             return;
         }
 
-        // Add click event listener to the sidebar for delegation
         sidebar.addEventListener('click', (e) => {
-            // Find the closest nav link that was clicked
             const navLink = e.target.closest('.nav-link');
             if (!navLink) return;
 
             e.preventDefault();
             
-            // Get the section from data attribute
             const sectionName = navLink.getAttribute('data-section');
             if (sectionName) {
                 this.showSection(sectionName);
@@ -279,7 +565,6 @@ export class UIUtils {
 
         console.log('Navigation setup completed');
     }
-
 
     showModal(content, title = '') {
         const modal = document.createElement('div');
@@ -303,13 +588,11 @@ export class UIUtils {
         document.body.appendChild(modal);
         modal.style.display = 'block';
         
-        // Focus management for accessibility
         const closeButton = modal.querySelector('.close');
         if (closeButton) {
             closeButton.focus();
         }
         
-        // Prevent background scrolling
         document.body.style.overflow = 'hidden';
         
         return modal;
@@ -318,9 +601,7 @@ export class UIUtils {
     closeModal(modal) {
         if (modal) {
             modal.style.display = 'none';
-            // Allow background scrolling again
             document.body.style.overflow = '';
-            // Remove from DOM after animation
             setTimeout(() => {
                 if (modal.parentNode) {
                     modal.parentNode.removeChild(modal);
@@ -329,7 +610,7 @@ export class UIUtils {
         }
     }
 
-    // Student Details Modal
+    // Student Details Modal - updated for new structure
     showStudentModal(student) {
         if (!student) {
             console.error('Student data is required');
@@ -360,11 +641,23 @@ export class UIUtils {
                 </div>
                 <div class="detail-row">
                     <label>Phone:</label>
-                    <span>${this.escapeHtml(student.phone_number || 'Not specified')}</span>
+                    <span>${this.escapeHtml(student.phone || 'Not specified')}</span>
                 </div>
                 <div class="detail-row">
                     <label>Address:</label>
                     <span>${this.escapeHtml(student.address || 'Not specified')}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Parent Name:</label>
+                    <span>${this.escapeHtml(student.parent_name || 'Not specified')}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Parent Email:</label>
+                    <span>${this.escapeHtml(student.parent_email || 'Not specified')}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Parent Phone:</label>
+                    <span>${this.escapeHtml(student.parent_phone || 'Not specified')}</span>
                 </div>
             </div>
             <div class="modal-actions">
@@ -378,7 +671,6 @@ export class UIUtils {
     // Interactive features
     addInteractiveFeatures() {
         try {
-            // Add click animations to cards
             document.querySelectorAll('.stat-card').forEach(card => {
                 card.addEventListener('click', function() {
                     this.style.transform = 'scale(0.95)';
@@ -388,12 +680,10 @@ export class UIUtils {
                 });
             });
 
-            // Add notice item interactions
             document.querySelectorAll('.notice-item').forEach(item => {
                 item.addEventListener('click', function() {
                     const notice = this.textContent.trim();
                     if (notice) {
-                        // Use our showMessage method instead of alert for better UX
                         window.uiUtils.showMessage(notice, 'info', 5000);
                     }
                 });
@@ -406,10 +696,9 @@ export class UIUtils {
         }
     }
 
-    // Keyboard shortcuts
+    // Keyboard shortcuts - updated for new sections
     setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
-            // Ctrl/Cmd + / for search focus
             if ((e.ctrlKey || e.metaKey) && e.key === '/') {
                 e.preventDefault();
                 const searchInput = document.getElementById('searchInput');
@@ -418,7 +707,6 @@ export class UIUtils {
                 }
             }
             
-            // Quick navigation shortcuts
             if (e.ctrlKey || e.metaKey) {
                 switch (e.key) {
                     case '1':
@@ -427,7 +715,7 @@ export class UIUtils {
                         break;
                     case '2':
                         e.preventDefault();
-                        this.showSection('attendance');
+                        this.showSection('teachers');
                         break;
                     case '3':
                         e.preventDefault();
@@ -435,10 +723,47 @@ export class UIUtils {
                         break;
                     case '4':
                         e.preventDefault();
+                        this.showSection('students-attendance');
+                        break;
+                    case '5':
+                        e.preventDefault();
+                        this.showSection('evaluations');
+                        break;
+                    case '6':
+                        e.preventDefault();
                         this.showSection('reports');
+                        break;
+                    case '7':
+                        e.preventDefault();
+                        this.showSection('settings');
                         break;
                 }
             }
+        });
+    }
+
+    // Utility method to populate select elements
+    populateSelect(selectId, items, valueField, textField) {
+        const select = document.getElementById(selectId);
+        if (!select || !Array.isArray(items)) return;
+
+        const firstOption = select.querySelector('option');
+        select.innerHTML = '';
+        if (firstOption) {
+            select.appendChild(firstOption);
+        }
+
+        items.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item[valueField];
+            
+            if (typeof textField === 'function') {
+                option.textContent = textField(item);
+            } else {
+                option.textContent = item[textField];
+            }
+            
+            select.appendChild(option);
         });
     }
 
@@ -497,7 +822,6 @@ export class UIUtils {
     }
 
     showMessage(message, type = 'info', duration = 5000) {
-        // Create or get message container
         let messageContainer = document.getElementById('messageContainer');
         if (!messageContainer) {
             messageContainer = document.createElement('div');
@@ -512,7 +836,6 @@ export class UIUtils {
             document.body.appendChild(messageContainer);
         }
 
-        // Create message element
         const messageElement = document.createElement('div');
         messageElement.className = `alert alert-${type}`;
         messageElement.setAttribute('role', 'alert');
@@ -527,7 +850,6 @@ export class UIUtils {
         `;
         messageElement.textContent = message;
 
-        // Set colors based on type
         const colors = {
             success: { bg: '#d4edda', color: '#155724', border: '#c3e6cb' },
             error: { bg: '#f8d7da', color: '#721c24', border: '#f5c6cb' },
@@ -542,12 +864,10 @@ export class UIUtils {
 
         messageContainer.appendChild(messageElement);
 
-        // Fade in
         setTimeout(() => {
             messageElement.style.opacity = '1';
         }, 10);
 
-        // Auto-remove message
         setTimeout(() => {
             if (messageElement.parentNode) {
                 messageElement.style.opacity = '0';
@@ -560,7 +880,6 @@ export class UIUtils {
         }, duration);
     }
 
-    // Loading state management
     showLoading(elementId, show = true) {
         const element = document.getElementById(elementId);
         if (!element) return;
@@ -606,14 +925,12 @@ export class UIUtils {
 
         const modal = this.showModal(content, 'Confirm Action');
         
-        // Handle confirm
         const confirmBtn = modal.querySelector('.confirm-btn');
         confirmBtn.addEventListener('click', () => {
             this.closeModal(modal);
             if (onConfirm) onConfirm();
         });
 
-        // Handle cancel
         const cancelBtn = modal.querySelector('.cancel-btn');
         cancelBtn.addEventListener('click', () => {
             this.closeModal(modal);
@@ -628,4 +945,5 @@ export class UIUtils {
         div.textContent = text;
         return div.innerHTML;
     }
+
 }
