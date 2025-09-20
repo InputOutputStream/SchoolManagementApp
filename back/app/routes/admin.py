@@ -37,16 +37,32 @@ def create_teacher(current_user):
         db.session.rollback()
         return jsonify({'message': str(e)}), 400
 
+# @admin_bp.route('/teachers', methods=['GET'])
+# @jwt_required()
+# @role_required('admin')
+# def get_teachers(current_user):
+#     try:
+#         teachers = db.session.query(Teacher).join(User).filter(User.is_active == True).all()
+#         logger.info(f"Admin {current_user.id} attempting to list teachers: {teachers}")
+#         return jsonify([teacher.to_dict() for teacher in teachers])
+#     except Exception as e:
+#         return jsonify({'message': str(e)}), 400
+
 @admin_bp.route('/teachers', methods=['GET'])
 @jwt_required()
 @role_required('admin')
 def get_teachers(current_user):
     try:
-        teachers = db.session.query(Teacher).join(User).filter(User.is_active == True).all()
-        logger.info(f"Admin {current_user.id} attempting to list teachers: {teachers}")
+        # This is the most efficient approach - filter teachers whose users are active
+        active_user_ids = db.session.query(User.id).filter(User.is_active == True).subquery()
+        teachers = Teacher.query.filter(Teacher.user_id.in_(active_user_ids)).all()
+        
+        logger.info(f"Admin {current_user.id} retrieved {len(teachers)} teachers (efficient method)")
         return jsonify([teacher.to_dict() for teacher in teachers])
     except Exception as e:
+        logger.error(f"Error retrieving teachers (efficient): {str(e)}")
         return jsonify({'message': str(e)}), 400
+
 
 @admin_bp.route('/teachers/<int:teacher_id>', methods=['PUT'])
 @jwt_required()
@@ -105,7 +121,7 @@ def promote_to_admin(current_user, teacher_id):
         if user.role == 'admin':
             return jsonify({'message': 'User is already an admin'}), 400
         
-        user.role = 'admin'  # Fixed: Use string instead of enum
+        user.role = 'admin'
         db.session.commit()
         
         return jsonify({

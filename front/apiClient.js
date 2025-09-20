@@ -356,16 +356,9 @@ export class ApiClient {
             const timeoutId = setTimeout(() => controller.abort(), config.timeout);
             
             config.signal = controller.signal;
-
-            console.log("........................................................................................")
-            console.log("The API REQUEST: ")
             console.log(url, config)
-            console.log("........................................................................................")
             const response = await fetch(url, config);
-            console.log("........................................................................................")
-            console.log("The API RESPONSE: ")
             console.log(response)
-            console.log("........................................................................................")
             clearTimeout(timeoutId);
             
             // Apply response interceptors
